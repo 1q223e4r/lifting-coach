@@ -1,0 +1,205 @@
+<header class="app-bar">
+  <div class="wrap">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 34 34">
+          <path d="M11.2 21.6V12.4c0-4 3.2-7.2 7.2-7.2h1.4c4 0 7.2 3.2 7.2 7.2v4.4c0 2.7-2.2 4.8-4.8 4.8z" fill="currentColor"/>
+          <path d="M11.4 13.2c-2.3 0-4.1 1.8-4.1 4.1s1.8 4.3 4.1 4.3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+          <rect x="11.6" y="23.4" width="14.8" height="5.8" rx="1.8" fill="currentColor"/>
+          <path d="M16.2 9.6c1.6-0.9 3.6-0.9 5.4 0" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.7"/>
+        </svg>
+      </span>
+      <div>
+        <h1>복싱 코치</h1>
+        <p>섀도복싱을 찍으면 펀치를 세고 자세를 바로 말해 줘요</p>
+      </div>
+    </div>
+    <div class="chips" aria-live="polite">
+      <span class="chip" id="chipPose">사람 –</span>
+      <span class="chip" id="chipView">시점 –</span>
+      <span class="chip" id="chipStance">오소독스</span>
+      <span class="chip" id="chipFps">– fps</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap layout">
+  <section class="stage-col" aria-label="촬영 화면">
+    <div class="stage" id="stage" data-alert="off">
+      <div class="stage-media" id="stageMedia">
+        <video id="video" playsinline muted preload="auto"></video>
+        <canvas id="overlay" aria-label="분석 화면"></canvas>
+      </div>
+
+      <div class="stage-empty" id="stageEmpty">
+        <svg class="setup-art" viewBox="0 0 360 176" role="img" aria-label="폰을 가슴 높이에 세워 두고 2~3m 떨어져서, 머리부터 발끝까지 나오게 가드 자세로 서는 배치">
+          <line class="art-ground" x1="10" y1="150" x2="350" y2="150"/>
+          <text class="art-label" x="51" y="56" text-anchor="middle" style="font-size:13px">가슴 높이</text>
+          <rect class="art-phone" x="40" y="64" width="22" height="38" rx="4"/>
+          <path class="art-stroke" d="M51 102v26M51 128l-12 22M51 128l12 22"/>
+          <path class="art-eye" d="M63 76L292 22M63 90L300 150"/>
+          <circle class="art-head" cx="294" cy="40" r="11"/>
+          <path class="art-limb" d="M292 52l-4 44M291 58l-8 18 -10-28M292 60l2 16 -12-22M288 96l-12 24 -6 28M288 96l12 26 10 26"/>
+          <circle class="art-glove" cx="273" cy="47" r="7.5"/>
+          <circle class="art-glove" cx="282" cy="53" r="7.5"/>
+          <path class="art-measure" d="M64 164H270M64 158v12M270 158v12"/>
+          <text class="art-label" x="167" y="158" text-anchor="middle">2~3m</text>
+        </svg>
+        <ol class="steps">
+          <li><span class="step-num">1</span><span>폰을 가슴 높이에 세우고 2~3m 뒤로. 머리부터 발끝까지 나오게.</span></li>
+          <li><span class="step-num">2</span><span>스탠스와 라운드를 고르고 시작. 10초 뒤 공이 울려요.</span></li>
+          <li><span class="step-num">3</span><span>섀도복싱. 펀치를 세고, 가드가 내려가거나 회수가 느리면 바로 말해 줘요.</span></li>
+        </ol>
+      </div>
+
+      <div class="combo" id="comboBox" hidden>
+        <span class="combo-label">콤비네이션</span>
+        <b id="comboText">1-2</b>
+      </div>
+      <div class="countdown" id="countdown" hidden aria-live="assertive"></div>
+      <div class="cue" id="cueBanner" hidden role="status"></div>
+      <div class="loading" id="loading" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="loadingText">불러오는 중…</span>
+      </div>
+    </div>
+
+    <div class="scoreboard" id="hud" hidden>
+      <div class="ring" id="ring" data-phase="idle">
+        <svg viewBox="0 0 70 70" aria-hidden="true">
+          <circle class="ring-track" cx="35" cy="35" r="29"/>
+          <circle class="ring-fill" id="ringFill" cx="35" cy="35" r="29" stroke-dasharray="182.2" stroke-dashoffset="0"/>
+        </svg>
+        <span class="ring-time" id="timeText">3:00</span>
+      </div>
+      <div class="hud-text">
+        <span class="phase" id="phaseLabel" data-phase="idle">시작 전</span>
+        <span class="hud-mix" id="hudMix">잽 0 · 스트 0 · 훅 0 · 어퍼 0</span>
+      </div>
+      <div class="hud-count"><b id="punchNum">0</b><span>펀치</span></div>
+    </div>
+
+    <div class="tip" id="tipBar" data-tone="info" hidden>
+      <span class="tip-icon" aria-hidden="true">
+        <svg class="ico ico-info" viewBox="0 0 20 20"><circle cx="10" cy="5.2" r="1.6" fill="currentColor"/><path d="M10 9v6.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        <svg class="ico ico-warn" viewBox="0 0 20 20"><path d="M10 4v7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><circle cx="10" cy="15.3" r="1.7" fill="currentColor"/></svg>
+        <svg class="ico ico-good" viewBox="0 0 20 20"><path d="M4.8 10.4l3.4 3.4 7-7.3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span id="tipText" aria-live="polite"></span>
+    </div>
+
+    <div class="controls">
+      <div class="btn-row" id="idleControls">
+        <button class="btn primary" id="btnCamera" type="button">카메라로 시작</button>
+        <button class="btn" id="btnUpload" type="button">영상 올려서 분석</button>
+        <button class="btn quiet" id="btnDemo" type="button">데모 보기</button>
+      </div>
+      <input id="fileInput" type="file" accept="video/*" hidden>
+      <div class="btn-row" id="runControls" hidden>
+        <button class="btn primary" id="btnPlay" type="button" hidden>라운드 시작</button>
+        <button class="btn" id="btnPause" type="button" aria-pressed="false" hidden>일시정지</button>
+        <button class="btn" id="btnFlip" type="button" hidden>카메라 전환</button>
+        <button class="btn dark" id="btnStop" type="button">끝내고 결과 보기</button>
+      </div>
+
+      <div class="settings" id="settings">
+        <div class="settings-head">
+          <h2>라운드 설정</h2>
+          <span id="settingsSummary">3분 × 3라운드</span>
+        </div>
+        <div class="setting">
+          <span class="setting-label" id="lblStance">스탠스</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lblStance">
+            <label><input type="radio" name="stance" value="orthodox" checked><span>오소독스</span></label>
+            <label><input type="radio" name="stance" value="southpaw"><span>사우스포</span></label>
+          </div>
+        </div>
+        <div class="setting">
+          <span class="setting-label" id="lblRound">라운드</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lblRound">
+            <label><input type="radio" name="roundSec" value="60"><span>1분</span></label>
+            <label><input type="radio" name="roundSec" value="120"><span>2분</span></label>
+            <label><input type="radio" name="roundSec" value="180" checked><span>3분</span></label>
+          </div>
+        </div>
+        <div class="setting">
+          <span class="setting-label" id="lblRest">휴식</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lblRest">
+            <label><input type="radio" name="restSec" value="30"><span>30초</span></label>
+            <label><input type="radio" name="restSec" value="60" checked><span>1분</span></label>
+          </div>
+        </div>
+        <div class="setting">
+          <span class="setting-label" id="lblRounds">횟수</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lblRounds">
+            <label><input type="radio" name="rounds" value="1"><span>1라운드</span></label>
+            <label><input type="radio" name="rounds" value="3" checked><span>3라운드</span></label>
+            <label><input type="radio" name="rounds" value="6"><span>6라운드</span></label>
+          </div>
+        </div>
+        <p class="guide-note">오소독스는 왼손·왼발이 앞, 사우스포는 오른손·오른발이 앞이에요. 설정과 반대로 서 있는 것 같으면 알려 줘요.</p>
+      </div>
+
+      <div class="toggles">
+        <label class="switch" for="optSound"><input id="optSound" type="checkbox" checked><span class="switch-track" aria-hidden="true"></span>공 소리</label>
+        <label class="switch" for="optVoice"><input id="optVoice" type="checkbox" checked><span class="switch-track" aria-hidden="true"></span>음성 코칭</label>
+      </div>
+      <div class="alert" id="alertBox" role="alert" hidden>
+        <span class="alert-icon" aria-hidden="true">!</span>
+        <p id="alertText"></p>
+        <button class="btn small" id="alertAction" type="button" hidden></button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="side-col" aria-label="기록과 안내">
+    <section class="card" aria-labelledby="setsTitle">
+      <div class="card-head">
+        <h2 id="setsTitle">이번 세션</h2>
+        <span class="badge" id="setsBadge" hidden></span>
+      </div>
+      <div class="sets" id="setsList"><span class="muted small-text">라운드가 끝날 때마다 펀치 수가 여기 쌓여요.</span></div>
+      <p class="sets-meta" id="setsMeta" hidden></p>
+    </section>
+
+    <section class="card" id="summaryCard" aria-labelledby="summaryTitle" hidden>
+      <div class="card-head">
+        <h2 id="summaryTitle">결과</h2>
+      </div>
+      <div id="summaryBody"></div>
+      <div class="btn-row card-actions">
+        <button class="btn primary" id="btnNewSession" type="button">새로 시작</button>
+      </div>
+    </section>
+
+    <details class="card guide" open>
+      <summary>촬영 세팅</summary>
+      <ul>
+        <li>폰은 가슴에서 얼굴 높이에 세로로 세우세요. 너무 낮게 두면 턱이 들린 것처럼 보일 수 있어요.</li>
+        <li>2~3m 떨어져서 머리부터 발끝까지 나오게. 발이 잘리면 스탠스는 따로 보지 않아요.</li>
+        <li>카메라를 정면으로 보고 서세요. 몸을 옆으로 돌리면 뒷손이 가려져요.</li>
+        <li>밝은 곳에서, 화면에는 한 명만. 몸에 붙는 옷이 관절을 더 잘 잡아요.</li>
+        <li>빠른 펀치는 처리 속도가 낮으면 놓칠 수 있어요. 위의 fps가 20보다 낮으면 다른 앱을 닫아 보세요.</li>
+      </ul>
+    </details>
+
+    <details class="card guide">
+      <summary>펀치 번호</summary>
+      <ul class="num-guide">
+        <li><b>1</b>잽</li>
+        <li><b>2</b>스트레이트</li>
+        <li><b>3</b>앞손 훅</li>
+        <li><b>4</b>뒷손 훅</li>
+        <li><b>5</b>앞손 어퍼</li>
+        <li><b>6</b>뒷손 어퍼</li>
+      </ul>
+      <p class="guide-note">0.7초 안에 이어서 친 펀치는 콤비네이션으로 묶어요(예: 1-2-3). 번호 체계는 체육관마다 조금 다를 수 있어요.</p>
+    </details>
+
+    <section class="card note" aria-label="안내">
+      <p>영상은 이 기기 안에서만 분석되고 어디에도 올라가지 않아요.</p>
+      <p>정면 카메라라 카메라 쪽으로 뻗는 움직임은 AI가 깊이를 추정해서 봐요. 그래서 스트레이트 몸통 회전과 무릎 각도는 참고용이에요.</p>
+      <p>자세 기준값은 일반적인 코칭 원칙과 합성 데이터로 정한 1차 값이에요. 실제 영상으로 써 보면서 맞춰 갈 예정이에요.</p>
+    </section>
+  </aside>
+</main>
