@@ -1,0 +1,3176 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>리프팅 코치</title>
+<meta name="description" content="카메라로 리프팅을 찍으면 터치를 세고 자세를 코칭해 주는 웹앱">
+<meta name="theme-color" content="#EE3F45">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=Poppins:wght@500;600;700&display=swap">
+<style>
+/* 레이아웃: 빨간 헤더 띠 위로 첫 카드가 살짝 겹쳐 올라오는 피트니스 앱 구성.
+   휴대폰은 1열(촬영 화면 → 코칭 한 줄 → 버튼 → 기록), 넓은 화면은 2열.
+   색: 코랄 레드 + 네이비 + 흰 카드(참고 시안 그대로 밝은 테마 하나로 고정) */
+:root {
+  --red: #EE3F45;
+  --red-strong: #D7313A;      /* 작은 빨간 글씨용(흰 배경 대비 확보) */
+  --red-soft: #FFE9EA;        /* 빨간 배지·아이콘 배경 */
+  --navy: #1F2A48;
+  --navy-2: #2D3A5E;
+  --bg: #F3F4F8;
+  --surface: #FFFFFF;
+  --surface-2: #F1F3F8;
+  --ink: #1F2A48;             /* 제목·숫자 */
+  --text: #3A4560;            /* 본문 */
+  --muted: #6B7489;           /* 보조 글씨(흰 배경 대비 4.5:1 이상) */
+  --line: #E4E7EF;
+  --good: #19A56B;
+  --shadow-card: 0 10px 28px rgb(31 42 72 / 0.08), 0 2px 6px rgb(31 42 72 / 0.05);
+  --shadow-btn: 0 8px 18px rgb(31 42 72 / 0.12), 0 2px 4px rgb(31 42 72 / 0.08);
+  --shadow-red: 0 10px 22px rgb(238 63 69 / 0.38), 0 3px 6px rgb(238 63 69 / 0.22);
+  --font-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-num: "Poppins", "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --radius-card: 20px;
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }   /* display를 지정한 요소도 hidden이면 확실히 숨김 */
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 400 15px/1.6 var(--font-body);
+  word-break: keep-all;          /* 한글 단어 중간에서 줄이 끊기지 않게 */
+  overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  padding-bottom: max(28px, env(safe-area-inset-bottom, 0px));
+}
+h1, h2, h3 { text-wrap: balance; }
+button, input, label { font: inherit; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---------- 빨간 헤더 ---------- */
+.app-bar {
+  background: linear-gradient(160deg, #F5565C 0%, var(--red) 55%, #E0333A 100%);
+  color: #fff;
+  padding-top: max(18px, env(safe-area-inset-top, 0px));
+  padding-bottom: 60px;
+}
+.app-bar .wrap { display: grid; gap: 14px; }
+@media (min-width: 720px) {
+  .app-bar .wrap { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+}
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--red);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 14px rgb(120 10 15 / 0.25);
+}
+.brand-mark svg { width: 30px; height: 30px; }
+.brand h1 {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+.brand p { margin: 2px 0 0; font-size: 13.5px; font-weight: 500; color: rgb(255 255 255 / 0.88); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.17);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.chip::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.55);
+}
+.chip[data-state="good"]::before { background: #7BF0B5; }
+.chip[data-state="warn"]::before { background: #FFD166; }
+.chip[data-state="bad"]::before { background: var(--navy); box-shadow: 0 0 0 1.5px #fff; }
+
+/* ---------- 본문 ---------- */
+.layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: -42px;
+  position: relative;
+}
+@media (min-width: 920px) {
+  .layout { grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); align-items: start; }
+}
+.stage-col, .side-col { display: grid; gap: 14px; min-width: 0; }
+
+/* ---------- 촬영 화면(네이비 카드) ---------- */
+.stage {
+  position: relative;
+  background: var(--navy);
+  color: #fff;
+  border-radius: 24px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  box-shadow: 0 18px 36px rgb(31 42 72 / 0.28);
+}
+.stage-media { position: relative; width: 100%; aspect-ratio: 16 / 9; max-width: 100%; }
+.stage-media video, .stage-media canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.stage-media video { object-fit: contain; background: var(--navy); }
+.stage-media canvas { touch-action: manipulation; }
+.stage-media.mirrored { transform: scaleX(-1); }
+.stage[data-tap="on"] canvas { cursor: crosshair; }
+
+.stage-empty {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: 26px 18px 26px;
+}
+.setup-art { width: min(400px, 100%); height: auto; }
+.art-ground { stroke: rgb(255 255 255 / 0.35); stroke-width: 2; }
+.art-stroke, .art-limb { stroke: #fff; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.art-limb { stroke-width: 5; }
+.art-head { fill: #fff; }
+.art-phone { fill: none; stroke: #fff; stroke-width: 3; }
+.art-dash { stroke: rgb(255 255 255 / 0.4); stroke-width: 1.5; stroke-dasharray: 5 6; fill: none; }
+.art-ball { fill: var(--red); }
+.art-measure { stroke: var(--red); stroke-width: 2.5; fill: none; }
+.art-label { fill: #fff; font: 700 16px var(--font-num); letter-spacing: 0.02em; }
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+}
+.steps li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  font-size: 15px;
+  line-height: 1.55;
+  color: rgb(255 255 255 / 0.92);
+}
+.step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--red);
+  color: #fff;
+  font: 700 14px/1 var(--font-num);
+  box-shadow: 0 4px 10px rgb(238 63 69 / 0.45);
+}
+
+/* 연속 터치 링: 내 기록(최소 10개)까지 얼마나 왔는지 */
+.hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 16px 7px 7px;
+  border-radius: 22px;
+  background: rgb(255 255 255 / 0.96);
+  color: var(--ink);
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.22);
+  pointer-events: none;
+}
+.ring { position: relative; width: 70px; height: 70px; flex: none; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: #EDEFF5; stroke-width: 7; }
+.ring-fill { fill: none; stroke: var(--red); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 250ms ease; }
+.ring-num {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 700 27px/1 var(--font-num);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ring-num.bump { animation: bump 280ms ease-out; }
+@keyframes bump {
+  0% { transform: scale(1.32); color: var(--red); }
+  100% { transform: scale(1); }
+}
+.hud-text { display: grid; gap: 2px; }
+.hud-label { font-size: 12px; font-weight: 500; color: var(--muted); }
+.hud-stats { font-size: 14px; font-weight: 700; color: var(--ink); }
+.hud-stats b, .hud-best b { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.hud-best { font-size: 12.5px; font-weight: 700; color: var(--red-strong); }
+.hud-best[data-record="on"]::after { content: " · 신기록!"; }
+
+.tap-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 0 0 0 rgb(238 63 69 / 0.55), var(--shadow-red);
+  animation: pulse 1.6s ease-out infinite;
+}
+@keyframes pulse { to { box-shadow: 0 0 0 20px rgb(238 63 69 / 0), var(--shadow-red); } }
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  background: rgb(31 42 72 / 0.86);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+}
+.spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3.5px solid rgb(255 255 255 / 0.22);
+  border-top-color: var(--red);
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- 코칭 한 줄(영상 아래) ---------- */
+.tip {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px 16px 10px 10px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.tip-icon {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--navy);
+}
+.tip[data-tone="warn"] .tip-icon { background: var(--red); color: #fff; box-shadow: 0 4px 10px rgb(238 63 69 / 0.35); }
+.tip[data-tone="good"] .tip-icon { background: var(--good); color: #fff; box-shadow: 0 4px 10px rgb(25 165 107 / 0.3); }
+.ico { width: 18px; height: 18px; display: none; }
+.tip[data-tone="info"] .ico-info, .tip[data-tone="warn"] .ico-warn, .tip[data-tone="good"] .ico-good { display: block; }
+
+/* ---------- 버튼: 알약 모양 + 음영 + 누를 때 들어가는 느낌 + 물결 ---------- */
+.controls { display: grid; gap: 14px; }
+.btn-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  min-height: 52px;
+  padding: 14px 20px;
+  background: var(--surface);
+  color: var(--red-strong);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  box-shadow: var(--shadow-btn);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease, background-color 120ms ease;
+}
+.btn:hover { box-shadow: 0 12px 24px rgb(31 42 72 / 0.16), 0 2px 4px rgb(31 42 72 / 0.08); }
+.btn:active { transform: translateY(2px) scale(0.98); box-shadow: 0 3px 8px rgb(31 42 72 / 0.14); }
+.btn.primary {
+  background: linear-gradient(180deg, #F6585E 0%, var(--red) 55%, #E2343B 100%);
+  color: #fff;
+  box-shadow: var(--shadow-red), inset 0 1px 0 rgb(255 255 255 / 0.3);
+}
+.btn.primary:hover { filter: brightness(1.04); }
+.btn.primary:active { box-shadow: 0 4px 10px rgb(238 63 69 / 0.35), inset 0 2px 5px rgb(120 10 15 / 0.25); }
+.btn.dark {
+  background: linear-gradient(180deg, var(--navy-2) 0%, var(--navy) 100%);
+  color: #fff;
+  box-shadow: 0 10px 22px rgb(31 42 72 / 0.32), inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+.btn.dark:active { box-shadow: 0 3px 8px rgb(31 42 72 / 0.3), inset 0 2px 5px rgb(0 0 0 / 0.25); }
+.btn.quiet { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn.quiet:active { box-shadow: inset 0 0 0 1.5px var(--line), inset 0 2px 5px rgb(31 42 72 / 0.12); }
+.btn[aria-pressed="true"] { background: var(--navy); color: #fff; box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.3); }
+.btn:focus-visible { outline: 3px solid rgb(238 63 69 / 0.5); outline-offset: 3px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn.small { min-height: 40px; padding: 9px 16px; font-size: 14px; }
+/* 누른 자리에서 퍼지는 물결(터치 임팩트) */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.3;
+  transform: scale(0);
+  animation: ripple 560ms ease-out forwards;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes ripple { to { transform: scale(1); opacity: 0; } }
+
+/* ---------- 스위치(참고 시안의 빨간 토글) ---------- */
+.toggles { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.switch-track {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  flex: none;
+  border-radius: 999px;
+  background: #D2D7E2;
+  box-shadow: inset 0 1px 3px rgb(31 42 72 / 0.2);
+  transition: background-color 180ms ease;
+}
+.switch-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 5px rgb(31 42 72 / 0.3);
+  transition: transform 180ms ease;
+}
+.switch input:checked + .switch-track { background: var(--red); }
+.switch input:checked + .switch-track::after { transform: translateX(20px); }
+.switch input:focus-visible + .switch-track { outline: 3px solid rgb(238 63 69 / 0.45); outline-offset: 2px; }
+
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.alert-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--red-soft);
+  color: var(--red-strong);
+  font: 800 17px/1 var(--font-num);
+}
+.alert p { margin: 0; flex: 1 1 200px; min-width: 0; color: var(--ink); font-weight: 500; line-height: 1.55; }
+
+/* ---------- 카드 ---------- */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.card h2 { margin: 0; font-size: 18px; line-height: 1.3; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
+.card-actions { margin-top: 18px; }
+.badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--red-soft);
+  color: var(--red-strong);
+  font: 700 12.5px/1 var(--font-body);
+  white-space: nowrap;
+}
+.muted { color: var(--muted); }
+.small-text { font-size: 14px; }
+.sets { display: flex; flex-wrap: wrap; gap: 8px; }
+.set-pill {
+  min-width: 48px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 700 18px/1.25 var(--font-num);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.set-pill.best { background: var(--red); color: #fff; box-shadow: 0 6px 14px rgb(238 63 69 / 0.35); }
+.sets-meta { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+
+details.guide summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+}
+details.guide summary::-webkit-details-marker { display: none; }
+details.guide summary::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  margin: 0 6px 4px 0;
+  border-right: 2.5px solid var(--red);
+  border-bottom: 2.5px solid var(--red);
+  transform: rotate(45deg);
+  transition: transform 200ms ease;
+}
+details.guide[open] summary::after { transform: rotate(-135deg); margin-bottom: -4px; }
+details.guide summary:focus-visible { outline: 3px solid rgb(238 63 69 / 0.45); outline-offset: 4px; border-radius: 8px; }
+details.guide ul { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+details.guide li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+}
+details.guide li::before {
+  content: "";
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='11' fill='%23FFE9EA'/%3E%3Cpath d='M6.6 11.4l3 3 5.8-6' fill='none' stroke='%23D7313A' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+/* ---------- 결과 ---------- */
+.stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat { padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
+.stat span { display: block; font-size: 13px; font-weight: 500; color: var(--muted); }
+.stat b { display: block; font: 700 28px/1.2 var(--font-num); color: var(--ink); font-variant-numeric: tabular-nums; }
+.stat.hero { background: linear-gradient(160deg, var(--navy-2), var(--navy)); box-shadow: 0 10px 22px rgb(31 42 72 / 0.25); }
+.stat.hero span { color: rgb(255 255 255 / 0.75); }
+.stat.hero b { color: #fff; }
+.summary-section { margin-top: 20px; }
+.summary-section h3 { margin: 0 0 10px; font-size: 13.5px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.part-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 34px;
+  gap: 10px;
+  align-items: center;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.part-row + .part-row { margin-top: 8px; }
+.part-bar { height: 10px; border-radius: 999px; background: #EDEFF5; overflow: hidden; }
+.part-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #F7797E, var(--red)); }
+.part-row output { text-align: right; font: 700 14px/1 var(--font-num); color: var(--ink); }
+.fact-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fact-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  font-size: 14.5px;
+}
+.fact-list .fact-label { color: var(--muted); font-weight: 500; flex: none; }
+.fact-list .fact-value { color: var(--ink); font-weight: 700; text-align: right; }
+.issue {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.issue:first-of-type { border-top: 0; padding-top: 2px; }
+.issue-rank {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--red-soft);
+  color: var(--red-strong);
+  font: 700 16px/1 var(--font-num);
+}
+.issue-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.issue-head strong { font-size: 15.5px; font-weight: 700; color: var(--ink); }
+.issue-rate {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font: 700 12.5px/1 var(--font-num);
+  white-space: nowrap;
+}
+.issue p { margin: 5px 0 0; font-size: 14.5px; line-height: 1.6; color: var(--text); }
+.note { font-size: 14px; line-height: 1.6; color: var(--muted); }
+.note p { margin: 0; }
+.note p + p { margin-top: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-num.bump, .tap-hint, .spinner, .ripple { animation: none; }
+  .btn, .switch-track, .switch-track::after, .ring-fill { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="app-bar">
+  <div class="wrap">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 34 34">
+          <circle cx="17" cy="17" r="15" fill="none" stroke="currentColor" stroke-width="2.5"/>
+          <path d="M17 9.5l6.2 4.5-2.4 7.3h-7.6l-2.4-7.3z" fill="currentColor"/>
+          <path d="M17 2v7.5M23.2 14l7.2-2.5M20.8 21.3l4.4 6.2M13.2 21.3l-4.4 6.2M10.8 14l-7.2-2.5" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </span>
+      <div>
+        <h1>리프팅 코치</h1>
+        <p>찍으면 터치를 세고 자세를 봐 줘요</p>
+      </div>
+    </div>
+    <div class="chips" aria-live="polite">
+      <span class="chip" id="chipPose">사람 –</span>
+      <span class="chip" id="chipBall">공 –</span>
+      <span class="chip" id="chipView">시점 –</span>
+      <span class="chip" id="chipFps">– fps</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap layout">
+  <section class="stage-col" aria-label="촬영 화면">
+    <div class="stage" id="stage" data-tap="off">
+      <div class="stage-media" id="stageMedia">
+        <video id="video" playsinline muted preload="auto"></video>
+        <canvas id="overlay" aria-label="분석 화면"></canvas>
+      </div>
+
+      <div class="stage-empty" id="stageEmpty">
+        <svg class="setup-art" viewBox="0 0 360 172" role="img" aria-label="폰을 세워 두고 2~4m 떨어져서 전신과 공이 다 나오게 찍는 배치">
+          <line class="art-ground" x1="10" y1="140" x2="350" y2="140"/>
+          <rect class="art-phone" x="38" y="86" width="22" height="38" rx="4"/>
+          <path class="art-stroke" d="M49 124v16M40 140h18"/>
+          <path class="art-dash" d="M61 98L318 26M61 112L318 140"/>
+          <path class="art-measure" d="M62 160H262M62 154v12M262 154v12"/>
+          <text class="art-label" x="162" y="155" text-anchor="middle">2~4m</text>
+          <circle class="art-head" cx="280" cy="50" r="10"/>
+          <path class="art-limb" d="M280 60v38M280 70l-15 17M280 70l16 15M280 98l-4 42M280 98l17 17-4 15h11"/>
+          <circle class="art-ball" cx="301" cy="118" r="8"/>
+        </svg>
+        <ol class="steps">
+          <li><span class="step-num">1</span><span>폰을 세워 두고 2~4m 뒤로. 머리부터 발끝, 공까지 다 나오게.</span></li>
+          <li><span class="step-num">2</span><span>시작하면 화면에서 공을 한 번 탭해요.</span></li>
+          <li><span class="step-num">3</span><span>리프팅 시작. 터치마다 소리가 나고, 공을 떨어뜨리면 개수와 코칭을 말해 줘요.</span></li>
+        </ol>
+      </div>
+
+      <div class="hud" id="hud" hidden>
+        <div class="ring">
+          <svg viewBox="0 0 70 70" aria-hidden="true">
+            <circle class="ring-track" cx="35" cy="35" r="29"/>
+            <circle class="ring-fill" id="ringFill" cx="35" cy="35" r="29" stroke-dasharray="182.2" stroke-dashoffset="182.2"/>
+          </svg>
+          <span class="ring-num" id="streakNum">0</span>
+        </div>
+        <div class="hud-text">
+          <span class="hud-label">연속 터치</span>
+          <span class="hud-stats">최고 <b id="bestNum">0</b> · 총 <b id="totalNum">0</b></span>
+          <span class="hud-best" id="hudBest" data-record="off">내 기록 <b id="bestEverNum">0</b></span>
+        </div>
+      </div>
+      <div class="tap-hint" id="tapHint" hidden>공을 탭하세요</div>
+      <div class="loading" id="loading" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="loadingText">불러오는 중…</span>
+      </div>
+    </div>
+
+    <div class="tip" id="tipBar" data-tone="info" hidden>
+      <span class="tip-icon" aria-hidden="true">
+        <svg class="ico ico-info" viewBox="0 0 20 20"><circle cx="10" cy="5.2" r="1.6" fill="currentColor"/><path d="M10 9v6.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        <svg class="ico ico-warn" viewBox="0 0 20 20"><path d="M10 4v7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><circle cx="10" cy="15.3" r="1.7" fill="currentColor"/></svg>
+        <svg class="ico ico-good" viewBox="0 0 20 20"><path d="M4.8 10.4l3.4 3.4 7-7.3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span id="tipText" aria-live="polite"></span>
+    </div>
+
+    <div class="controls">
+      <div class="btn-row" id="idleControls">
+        <button class="btn primary" id="btnCamera" type="button">카메라로 시작</button>
+        <button class="btn" id="btnUpload" type="button">영상 올려서 분석</button>
+        <button class="btn quiet" id="btnDemo" type="button">데모 보기</button>
+      </div>
+      <input id="fileInput" type="file" accept="video/*" hidden>
+      <div class="btn-row" id="runControls" hidden>
+        <button class="btn primary" id="btnPlay" type="button" hidden>분석 시작</button>
+        <button class="btn" id="btnPickBall" type="button" aria-pressed="false">공 지정</button>
+        <button class="btn" id="btnFlip" type="button" hidden>카메라 전환</button>
+        <button class="btn dark" id="btnStop" type="button">끝내고 결과 보기</button>
+      </div>
+      <div class="toggles">
+        <label class="switch" for="optSound"><input id="optSound" type="checkbox" checked><span class="switch-track" aria-hidden="true"></span>터치 소리</label>
+        <label class="switch" for="optVoice"><input id="optVoice" type="checkbox" checked><span class="switch-track" aria-hidden="true"></span>음성 코칭</label>
+      </div>
+      <div class="alert" id="alertBox" role="alert" hidden>
+        <span class="alert-icon" aria-hidden="true">!</span>
+        <p id="alertText"></p>
+        <button class="btn small" id="alertAction" type="button" hidden></button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="side-col" aria-label="기록과 안내">
+    <section class="card" aria-labelledby="setsTitle">
+      <div class="card-head">
+        <h2 id="setsTitle">이번 세션</h2>
+        <span class="badge" id="setsBadge" hidden></span>
+      </div>
+      <div class="sets" id="setsList"><span class="muted small-text">공을 떨어뜨릴 때마다 세트 기록이 여기 쌓여요.</span></div>
+      <p class="sets-meta" id="setsMeta" hidden></p>
+    </section>
+
+    <section class="card" id="summaryCard" aria-labelledby="summaryTitle" hidden>
+      <div class="card-head">
+        <h2 id="summaryTitle">결과</h2>
+      </div>
+      <div id="summaryBody"></div>
+      <div class="btn-row card-actions">
+        <button class="btn primary" id="btnNewSession" type="button">새로 시작</button>
+      </div>
+    </section>
+
+    <details class="card guide" open>
+      <summary>촬영 세팅</summary>
+      <ul>
+        <li>폰을 바닥이나 거치대에 세우고 2~4m 떨어져요. 머리, 발끝, 공이 다 보여야 해요.</li>
+        <li>옆에서 찍으면 발등 각도와 앞뒤 흐름까지, 정면에서 찍으면 좌우 흐름까지 봐요. 디딤다리, 터치 높이, 공 높이는 둘 다 돼요.</li>
+        <li>공과 배경 색이 다를수록 잘 잡아요. 흰 공이면 흰 벽 앞은 피하세요.</li>
+        <li>밝은 곳에서, 화면에는 한 명만.</li>
+        <li>공을 지정할 땐 공이 멈춰 있을 때 탭해요. 다음부터는 같은 색 공을 자동으로 찾아요.</li>
+      </ul>
+    </details>
+
+    <section class="card note" aria-label="안내">
+      <p>영상은 이 기기 안에서만 분석되고 어디에도 올라가지 않아요.</p>
+      <p>자세 기준값은 일반적인 코칭 원칙을 바탕으로 정한 임시값이에요. 실제 영상으로 써 보면서 맞춰 갈 예정이에요.</p>
+    </section>
+  </aside>
+</main>
+
+<script>
+// ==CORE START==
+// 화면(DOM)과 무관한 분석 로직. 테스트에서 이 블록만 떼어 실행할 수 있게 분리해 둠.
+(function (global) {
+  'use strict';
+
+  // ===== 설정값 (자세 임계값은 코칭 원칙 기반 임시값, 실제 영상으로 조정 필요) =====
+  const CONFIG = Object.freeze({
+    analysisLongSide: 320,     // 분석용 축소 해상도의 긴 변(px)
+    assumedBodyHeightM: 1.7,   // 중력 보정·cm 환산용 가정 키
+    legToBodyRatio: 0.49,      // (엉덩이→무릎→발목 길이) / 키
+    ballRadiusToBody: 0.065,   // 5호공 반지름 / 키
+    ball: Object.freeze({
+      chromaTol: 18,           // YCbCr 색차 허용치
+      lumaTol: 70,             // 밝기 허용치
+      innerRatio: 0.6,         // 공 안쪽 정사각형 반폭 / 반지름
+      ringInnerRatio: 1.2,     // 주변 고리 안쪽 / 반지름
+      ringOuterRatio: 1.8,     // 주변 고리 바깥 / 반지름
+      minInnerFill: 0.45,      // 안쪽이 공 색으로 채워진 최소 비율
+      minContrast: 0.22,       // (안쪽 채움 - 0.8*주변 채움) 최소값: 큰 벽·바닥 배제
+      distPenalty: 0.15,       // 예측 위치에서 멀수록 감점
+      alpha: 0.85,             // alpha-beta 필터 위치 보정 계수
+      beta: 0.4,               // alpha-beta 필터 속도 보정 계수
+      coastMaxSec: 0.6,        // 이 시간 동안 못 찾으면 '놓침'
+      colorAdapt: 0.04,        // 조명 변화 따라 공 색 천천히 갱신
+      minRadius: 2.5,
+      maxRadiusFrac: 0.2,      // 최대 반지름 = 화면 짧은 변 * 0.2
+      limbExcludeRatio: 0.45,  // 정강이·발 주변 제외 반경(공 반지름 대비): 흰 양말 오인식 방지
+    }),
+    touch: Object.freeze({
+      speedThreshBodyPerSec: 0.35,    // 낙하/상승 판정 최소 속도(키/초)
+      fallbackSpeedFramePerSec: 0.25, // 포즈가 없을 때(화면 높이/초)
+      minIntervalSec: 0.18,           // 같은 터치 중복 방지
+      velWindowSec: 0.16,             // 속도 추정 창
+      maxSampleGapSec: 0.25,
+      partMaxDistBallR: 1.3,          // 부위 판정 최대 거리 = 1.3*공 반지름 + 0.05*키
+      partMaxDistBody: 0.05,
+      groundMarginBody: 0.05,         // 지면에서 이 높이 이내면 '바닥 바운드' 후보
+      footRaisedBody: 0.03,
+    }),
+    streak: Object.freeze({ endAfterNoTouchSec: 2.2, endAfterLostSec: 1.2 }),
+    posture: Object.freeze({
+      stiffKneeDeg: 172,       // 디딤다리 무릎 각도 상한(180 = 완전히 펴짐)
+      highContactLeg: 0.75,    // 터치 높이 / 다리 길이 상한 (0.57 ≈ 무릎 높이)
+      torsoTiltDeg: 22,
+      toeDownDeg: -30,         // 발등 기울기(측면만): 발끝이 이보다 내려가면 경고
+      toeUpDeg: 30,
+      tooHighRise: 0.75,       // 터치 후 공 상승 높이 / 키
+      tooLowRise: 0.12,
+      driftBody: 0.12,         // 터치 사이 공의 수평 이동 / 키
+      issueWindow: 6,          // 최근 N번 터치 중
+      issueMinCount: 3,        // M번 이상 나오면 실시간 코칭
+    }),
+  });
+
+  // MediaPipe Pose 33개 랜드마크 중 쓰는 것
+  const LM = Object.freeze({
+    NOSE: 0, L_EAR: 7, R_EAR: 8, L_SHOULDER: 11, R_SHOULDER: 12,
+    L_HIP: 23, R_HIP: 24, L_KNEE: 25, R_KNEE: 26, L_ANKLE: 27, R_ANKLE: 28,
+    L_HEEL: 29, R_HEEL: 30, L_TOE: 31, R_TOE: 32,
+  });
+  const MIN_VIS = 0.4;
+  const FOOT_POINTS = [LM.L_ANKLE, LM.R_ANKLE, LM.L_HEEL, LM.R_HEEL, LM.L_TOE, LM.R_TOE];
+
+  const PART_LABELS = Object.freeze({
+    footR: '오른발', footL: '왼발', thighR: '오른 허벅지', thighL: '왼 허벅지', head: '머리', unknown: '기타',
+  });
+
+  const ISSUES = Object.freeze({
+    stiffStandingLeg: { label: '디딤다리가 펴짐', tip: '디딤다리 무릎을 살짝 굽혀요', detail: '디딤다리가 쭉 펴져 있으면 공이 조금만 빗나가도 몸이 못 따라가요. 무릎을 살짝 굽히고 앞꿈치에 체중을 실어 보세요.' },
+    highContact: { label: '너무 높은 곳에서 터치', tip: '공이 무릎 아래로 내려오면 차요', detail: '발을 높이 들어 공을 마중 나가면 발등 각도가 흔들려요. 공이 무릎 아래까지 내려오길 기다렸다가 가볍게 터치해 보세요.' },
+    toeDown: { label: '발끝이 아래로 향함', tip: '발목 고정, 발등은 평평하게', detail: '발끝이 아래를 향하면 발등 면이 앞을 보게 돼서 공이 몸에서 멀어져요. 발목을 고정하고 발등을 바닥과 평평하게 유지해 보세요.' },
+    toeUp: { label: '발끝이 많이 들림', tip: '발끝을 조금 내려요', detail: '발끝이 많이 들리면 공이 몸 쪽으로 튀어 와요. 발등이 평평해질 만큼만 발끝을 내려 보세요.' },
+    driftForward: { label: '공이 앞으로 나감', tip: '발끝 내리지 말고 발등 평평하게', detail: '공이 몸 앞으로 멀어지면 발끝이 내려가 있을 가능성이 커요. 발목을 고정하고 발등을 평평하게 유지해 보세요.' },
+    driftBack: { label: '공이 몸 쪽으로 옴', tip: '발끝을 조금 내려요', detail: '공이 몸 쪽으로 오면 발끝이 들려 있을 가능성이 커요. 발등이 평평해지게 발끝을 살짝 내려 보세요.' },
+    driftLeft: { label: '공이 왼쪽으로 흐름', tip: '발등 한가운데로 맞혀요', detail: '발등 면이 기울어서 공이 옆으로 빠져요. 신발 끈 부분 정중앙에 맞히는 데 집중해 보세요.' },
+    driftRight: { label: '공이 오른쪽으로 흐름', tip: '발등 한가운데로 맞혀요', detail: '발등 면이 기울어서 공이 옆으로 빠져요. 신발 끈 부분 정중앙에 맞히는 데 집중해 보세요.' },
+    tooHigh: { label: '공이 너무 높이 뜸', tip: '힘을 빼고 짧게 툭', detail: '공이 높이 뜨면 떨어지는 속도가 빨라져 다음 터치가 어려워져요. 허리에서 가슴 높이를 목표로 힘을 빼 보세요.' },
+    tooLow: { label: '공이 너무 낮음', tip: '무릎 높이까지는 띄워요', detail: '공이 너무 낮으면 다음 터치를 준비할 시간이 없어요. 최소한 무릎 높이까지는 띄워 보세요.' },
+    torsoTilt: { label: '상체가 기울어짐', tip: '가슴은 세우고 눈만 공을 봐요', detail: '상체가 많이 숙여지거나 옆으로 기울면 중심이 흔들려요. 상체는 세우고 고개만 살짝 숙여 공을 보세요.' },
+  });
+  // 동점일 때 먼저 알려줄 순서(원인에 가까운 것 먼저)
+  const ISSUE_PRIORITY = Object.freeze([
+    'stiffStandingLeg', 'highContact', 'toeDown', 'toeUp', 'driftForward', 'driftBack',
+    'driftLeft', 'driftRight', 'tooHigh', 'tooLow', 'torsoTilt',
+  ]);
+
+  // ===== 수학 유틸 =====
+  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+  function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+  function midpoint(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
+  function lerpPoint(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
+
+  // b에서의 내각(도). z가 있으면 3D로 계산
+  function angleAtDeg(a, b, c) {
+    const ux = a.x - b.x, uy = a.y - b.y, uz = (a.z || 0) - (b.z || 0);
+    const vx = c.x - b.x, vy = c.y - b.y, vz = (c.z || 0) - (b.z || 0);
+    const nu = Math.hypot(ux, uy, uz), nv = Math.hypot(vx, vy, vz);
+    if (nu < 1e-9 || nv < 1e-9) return NaN;
+    const cos = clamp((ux * vx + uy * vy + uz * vz) / (nu * nv), -1, 1);
+    return (Math.acos(cos) * 180) / Math.PI;
+  }
+
+  function distPointToSegment(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 > 0 ? clamp(((px - ax) * dx + (py - ay) * dy) / len2, 0, 1) : 0;
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  }
+  function segDist(p, a, b) { return distPointToSegment(p.x, p.y, a.x, a.y, b.x, b.y); }
+
+  function median(values) {
+    if (!values.length) return NaN;
+    const s = values.slice().sort((x, y) => x - y);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+  function meanOf(values) { return values.length ? values.reduce((s, v) => s + v, 0) / values.length : NaN; }
+  function coefficientOfVariation(values) {
+    if (values.length < 3) return NaN;
+    const m = meanOf(values);
+    if (!(m > 0)) return NaN;
+    const variance = values.reduce((s, v) => s + (v - m) * (v - m), 0) / (values.length - 1);
+    return Math.sqrt(variance) / m;
+  }
+  function rgbToYcc(r, g, b) {
+    return {
+      y: 0.299 * r + 0.587 * g + 0.114 * b,
+      cb: 128 - 0.168736 * r - 0.331264 * g + 0.5 * b,
+      cr: 128 + 0.5 * r - 0.418688 * g - 0.081312 * b,
+    };
+  }
+
+  // 고정 크기 링버퍼: 오래된 데이터가 자동으로 밀려나서 메모리가 늘지 않음
+  class RingBuffer {
+    constructor(capacity) { this.capacity = capacity; this.items = new Array(capacity); this.start = 0; this.length = 0; }
+    push(item) {
+      const index = (this.start + this.length) % this.capacity;
+      this.items[index] = item;
+      if (this.length < this.capacity) this.length++;
+      else this.start = (this.start + 1) % this.capacity;
+    }
+    get(i) { return this.items[(this.start + i) % this.capacity]; }        // 0 = 가장 오래된 것
+    last(k = 0) { return this.length > k ? this.get(this.length - 1 - k) : undefined; } // 0 = 가장 최근
+    clear() { this.start = 0; this.length = 0; }
+  }
+
+  // ===== 포즈 프레임: 정규화 좌표 → 분석 해상도 픽셀 좌표 + 자주 쓰는 값 미리 계산 =====
+  function buildPoseFrame(t, landmarks, worldLandmarks, width, height) {
+    if (!Array.isArray(landmarks) || landmarks.length < 33) return null;
+    const px = new Array(33);
+    for (let i = 0; i < 33; i++) {
+      const lm = landmarks[i];
+      px[i] = { x: lm.x * width, y: lm.y * height, v: typeof lm.visibility === 'number' ? lm.visibility : 1 };
+    }
+    // 결과 객체가 해제돼도 안전하도록 3D 좌표는 복사
+    let world = null;
+    if (Array.isArray(worldLandmarks) && worldLandmarks.length >= 33) {
+      world = new Array(33);
+      for (let i = 0; i < 33; i++) world[i] = { x: worldLandmarks[i].x, y: worldLandmarks[i].y, z: worldLandmarks[i].z };
+    }
+    // 보이는 발 랜드마크 중 가장 아래 = 지면 높이(디딤발이 땅에 있으므로)
+    let groundY = -Infinity, visibleFeet = 0;
+    for (const i of FOOT_POINTS) {
+      if (px[i].v >= MIN_VIS) { visibleFeet++; if (px[i].y > groundY) groundY = px[i].y; }
+    }
+    const legLength = (hip, knee, ankle) => (
+      px[hip].v >= MIN_VIS && px[knee].v >= MIN_VIS && px[ankle].v >= MIN_VIS
+        ? distance(px[hip], px[knee]) + distance(px[knee], px[ankle])
+        : 0
+    );
+    // 두 다리 중 긴 쪽 = 대체로 펴진 디딤다리라 원근 왜곡이 적음
+    const legLen = Math.max(legLength(LM.L_HIP, LM.L_KNEE, LM.L_ANKLE), legLength(LM.R_HIP, LM.R_KNEE, LM.R_ANKLE));
+    const shoulderMid = midpoint(px[LM.L_SHOULDER], px[LM.R_SHOULDER]);
+    const hipMid = midpoint(px[LM.L_HIP], px[LM.R_HIP]);
+    const feetCut = visibleFeet === 0 || groundY > height * 0.985;
+    return {
+      t, px, world, width, height,
+      groundY: Number.isFinite(groundY) ? groundY : null,
+      legLen, torsoLen: distance(shoulderMid, hipMid), shoulderMid, hipMid, feetCut,
+    };
+  }
+
+  // 정강이·발 주변을 공 후보에서 빼기 위한 캡슐 목록
+  function legExclusions(pose, ballRadius) {
+    if (!pose || !(ballRadius > 0)) return [];
+    const r = Math.max(1.5, ballRadius * CONFIG.ball.limbExcludeRatio);
+    const P = pose.px;
+    const out = [];
+    const add = (i, j) => {
+      if (P[i].v >= MIN_VIS && P[j].v >= MIN_VIS) out.push({ ax: P[i].x, ay: P[i].y, bx: P[j].x, by: P[j].y, r });
+    };
+    add(LM.L_KNEE, LM.L_ANKLE); add(LM.L_ANKLE, LM.L_TOE); add(LM.L_HEEL, LM.L_TOE);
+    add(LM.R_KNEE, LM.R_ANKLE); add(LM.R_ANKLE, LM.R_TOE); add(LM.R_HEEL, LM.R_TOE);
+    return out;
+  }
+
+  // ===== 공 추적기 =====
+  // 1) 공 색과 비슷한 픽셀 마스크 → 2) 적분 영상으로 "안쪽은 꽉 차고 주변은 비어 있는" 둥근 덩어리 탐색
+  // 3) 예측 위치 주변만 검색(alpha-beta 필터 + 중력) → 놓치면 전체 화면 재탐색
+  class BallTracker {
+    constructor() {
+      this.mask = null;           // 1 = 공 색 픽셀
+      this.valid = null;          // 0 = 다리에 가려 판단 보류(공도 배경도 아님)
+      this.integral = null;
+      this.validIntegral = null;
+      this.bufW = 0;
+      this.bufH = 0;
+      this.lastArea = 0;          // 직전 rectSum의 유효 픽셀 수
+      this.lastGeomArea = 0;      // 직전 rectSum의 전체 픽셀 수
+      this.lastFillIn = 0;
+      this.color = null;
+      this.reset();
+    }
+
+    reset() {
+      this.status = 'idle';          // idle | tracking | coasting | lost
+      this.color = null;
+      this.radius = 0;
+      this.initialRadius = 0;
+      this.radiusUncertain = false;  // 저장된 색만으로 시작해서 크기를 아직 모를 때
+      this.x = 0; this.y = 0; this.vx = 0; this.vy = 0;
+      this.lastT = null;
+      this.coastSec = 0;
+      this.measuredCount = 0;
+    }
+
+    ensureBuffers(w, h) {
+      if (this.bufW === w && this.bufH === h) return;
+      // 프레임 크기가 바뀔 때만 할당(매 프레임 할당 X)
+      this.mask = new Uint8Array(w * h);
+      this.valid = new Uint8Array(w * h);
+      this.integral = new Int32Array((w + 1) * (h + 1));
+      this.validIntegral = new Int32Array((w + 1) * (h + 1));
+      this.bufW = w;
+      this.bufH = h;
+    }
+
+    // 탭한 위치의 색·크기로 추적 시작
+    initFromTap(img, tapX, tapY) {
+      if (!img || !(img.width > 0) || !(img.height > 0)) return { ok: false, reason: 'no-frame' };
+      const w = img.width, h = img.height;
+      this.ensureBuffers(w, h);
+      const cx = clamp(Math.floor(tapX), 0, w - 1);
+      const cy = clamp(Math.floor(tapY), 0, h - 1);
+      // 5x5 주변 색의 중앙값 = 공의 대표 색(검은 무늬 위를 눌러도 넓은 면 색이 이김)
+      const rs = [], gs = [], bs = [];
+      for (let y = cy - 2; y <= cy + 2; y++) {
+        for (let x = cx - 2; x <= cx + 2; x++) {
+          if (x < 0 || y < 0 || x >= w || y >= h) continue;
+          const p = (y * w + x) * 4;
+          rs.push(img.data[p]); gs.push(img.data[p + 1]); bs.push(img.data[p + 2]);
+        }
+      }
+      const previousColor = this.color;
+      this.color = rgbToYcc(median(rs), median(gs), median(bs));
+      this.buildMask(img, 0, 0, w, h, []);
+      const region = this.buildIntegral(0, 0, w, h);
+      // 반지름을 키워 가며 대비 점수를 보고, 점수가 거의 최대인 구간의 평균을 반지름으로
+      const maxR = Math.max(CONFIG.ball.minRadius + 1, Math.min(w, h) * CONFIG.ball.maxRadiusFrac);
+      const samples = [];
+      for (let r = CONFIG.ball.minRadius; r <= maxR; r *= 1.12) {
+        const reach = Math.ceil(r * 0.6);
+        const best = this.searchBest(region, cx - reach, cy - reach, cx + reach, cy + reach, 1, [r], null, null, 1);
+        if (best) samples.push(best);
+      }
+      if (!samples.length) {
+        this.color = previousColor;
+        return { ok: false, reason: 'no-blob' };
+      }
+      const top = Math.max(...samples.map((s) => s.contrast));
+      const plateau = samples.filter((s) => s.contrast >= top * 0.92);
+      const radius = meanOf(plateau.map((s) => s.r));
+      const center = plateau.reduce((acc, s) => (s.score > acc.score ? s : acc), plateau[0]);
+      const refined = this.refineCentroid(region, center.x, center.y, radius);
+      this.radius = radius;
+      this.initialRadius = radius;
+      this.radiusUncertain = false;
+      this.x = refined.x; this.y = refined.y; this.vx = 0; this.vy = 0;
+      this.status = 'tracking';
+      this.coastSec = 0;
+      this.lastT = null;
+      this.measuredCount = 0;
+      return { ok: true, radius, x: this.x, y: this.y };
+    }
+
+    // 지난번 공 색으로 시작: 화면 전체에서 자동 탐색
+    initFromColor(color, radiusGuess) {
+      if (!color || !Number.isFinite(color.y) || !Number.isFinite(color.cb) || !Number.isFinite(color.cr)) return false;
+      this.color = { y: color.y, cb: color.cb, cr: color.cr };
+      this.radius = Math.max(CONFIG.ball.minRadius, radiusGuess || 6);
+      this.initialRadius = this.radius;
+      this.radiusUncertain = true;
+      this.status = 'lost';
+      this.coastSec = 0; this.lastT = null; this.vx = 0; this.vy = 0; this.measuredCount = 0;
+      return true;
+    }
+
+    // 영역 [x0,x1)×[y0,y1)의 '공 색' 마스크. 다리 캡슐 안은 '판단 보류'(valid=0)로:
+    // 터치 순간엔 공이 정강이 앞에 겹쳐 보이므로 그 픽셀을 '공 아님'으로 치면 공을 놓침
+    buildMask(img, x0, y0, x1, y1, exclusions) {
+      const data = img.data, w = img.width, mask = this.mask, valid = this.valid, c = this.color;
+      const tolC2 = CONFIG.ball.chromaTol * CONFIG.ball.chromaTol;
+      const tolY = CONFIG.ball.lumaTol;
+      for (let y = y0; y < y1; y++) {
+        let m = y * w + x0;
+        let p = m * 4;
+        for (let x = x0; x < x1; x++, m++, p += 4) {
+          const r = data[p], g = data[p + 1], b = data[p + 2];
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          let hit = 0;
+          if (lum - c.y <= tolY && c.y - lum <= tolY) {
+            const dcb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b - c.cb;
+            const dcr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b - c.cr;
+            if (dcb * dcb + dcr * dcr <= tolC2) hit = 1;
+          }
+          mask[m] = hit;
+          valid[m] = 1;
+        }
+      }
+      for (const s of exclusions) {
+        const ex0 = Math.max(x0, Math.floor(Math.min(s.ax, s.bx) - s.r));
+        const ex1 = Math.min(x1 - 1, Math.ceil(Math.max(s.ax, s.bx) + s.r));
+        const ey0 = Math.max(y0, Math.floor(Math.min(s.ay, s.by) - s.r));
+        const ey1 = Math.min(y1 - 1, Math.ceil(Math.max(s.ay, s.by) + s.r));
+        for (let y = ey0; y <= ey1; y++) {
+          for (let x = ex0; x <= ex1; x++) {
+            const m = y * w + x;
+            if (!valid[m]) continue;
+            if (distPointToSegment(x + 0.5, y + 0.5, s.ax, s.ay, s.bx, s.by) <= s.r) {
+              mask[m] = 0;
+              valid[m] = 0;
+            }
+          }
+        }
+      }
+    }
+
+    // 적분 영상(공 픽셀 수, 유효 픽셀 수): 사각형 합을 O(1)로 구하기 위함
+    buildIntegral(x0, y0, x1, y1) {
+      const w = x1 - x0, h = y1 - y0, W = w + 1;
+      const I = this.integral, V = this.validIntegral, mask = this.mask, valid = this.valid, fw = this.bufW;
+      for (let i = 0; i <= w; i++) { I[i] = 0; V[i] = 0; }
+      for (let y = 1; y <= h; y++) {
+        let rowSum = 0, rowValid = 0;
+        const rowBase = y * W;
+        const prevBase = rowBase - W;
+        const maskRow = (y0 + y - 1) * fw + x0 - 1;
+        I[rowBase] = 0;
+        V[rowBase] = 0;
+        for (let x = 1; x <= w; x++) {
+          rowSum += mask[maskRow + x];
+          rowValid += valid[maskRow + x];
+          I[rowBase + x] = I[prevBase + x] + rowSum;
+          V[rowBase + x] = V[prevBase + x] + rowValid;
+        }
+      }
+      return { x0, y0, w, h, W };
+    }
+
+    // 절대 좌표 사각형 [ax0,ax1)×[ay0,ay1)의 공 픽셀 합(영역 밖은 잘라냄).
+    // 유효 픽셀 수는 this.lastArea, 전체 픽셀 수는 this.lastGeomArea
+    rectSum(R, ax0, ay0, ax1, ay1) {
+      const lx0 = Math.max(0, ax0 - R.x0), ly0 = Math.max(0, ay0 - R.y0);
+      const lx1 = Math.min(R.w, ax1 - R.x0), ly1 = Math.min(R.h, ay1 - R.y0);
+      if (lx1 <= lx0 || ly1 <= ly0) { this.lastArea = 0; this.lastGeomArea = 0; return 0; }
+      const I = this.integral, V = this.validIntegral, W = R.W;
+      const i11 = ly1 * W + lx1, i01 = ly0 * W + lx1, i10 = ly1 * W + lx0, i00 = ly0 * W + lx0;
+      this.lastGeomArea = (lx1 - lx0) * (ly1 - ly0);
+      this.lastArea = V[i11] - V[i01] - V[i10] + V[i00];
+      return I[i11] - I[i01] - I[i10] + I[i00];
+    }
+
+    // 사각형 안 채움 비율(영역 밖이면 0)
+    fillOf(R, ax0, ay0, ax1, ay1) {
+      const sum = this.rectSum(R, ax0, ay0, ax1, ay1);
+      return this.lastArea > 0 ? sum / this.lastArea : 0;
+    }
+
+    // 중심-주변 대비 점수 = 안쪽 채움 - 0.9 * (위·아래·왼쪽·오른쪽 띠 중 가장 꽉 찬 띠)
+    // 공이면 네 띠가 모두 비어 있어야 해서, 기둥·선·벽처럼 길쭉하거나 큰 물체는 걸러짐.
+    // 안쪽 채움 비율은 this.lastFillIn (탐색 루프에서 객체를 만들지 않으려고)
+    scoreAt(R, cx, cy, r) {
+      const B = CONFIG.ball;
+      const a = Math.max(1, Math.round(r * B.innerRatio));
+      const c = Math.max(a + 1, Math.round(r * B.ringInnerRatio));
+      const b = Math.max(c + 1, Math.round(r * B.ringOuterRatio));
+      const innerSum = this.rectSum(R, cx - a, cy - a, cx + a + 1, cy + a + 1);
+      const innerArea = this.lastArea;
+      // 안쪽이 거의 다 가려졌으면(유효 25% 미만) 판단하지 않음
+      if (innerArea === 0 || innerArea < this.lastGeomArea * 0.25) { this.lastFillIn = 0; return -Infinity; }
+      const fillIn = innerSum / innerArea;
+      this.lastFillIn = fillIn;
+      if (fillIn < B.minInnerFill) return -Infinity;   // 빠른 탈락(성능)
+      const top = this.fillOf(R, cx - a, cy - b, cx + a + 1, cy - c);
+      const bottom = this.fillOf(R, cx - a, cy + c + 1, cx + a + 1, cy + b + 1);
+      const left = this.fillOf(R, cx - b, cy - a, cx - c, cy + a + 1);
+      const right = this.fillOf(R, cx + c + 1, cy - a, cx + b + 1, cy + a + 1);
+      return fillIn - 0.9 * Math.max(top, bottom, left, right);
+    }
+
+    searchBest(R, cxMin, cyMin, cxMax, cyMax, step, radii, predX, predY, searchRadius) {
+      const B = CONFIG.ball;
+      const x0 = Math.max(R.x0, cxMin), y0 = Math.max(R.y0, cyMin);
+      const x1 = Math.min(R.x0 + R.w - 1, cxMax), y1 = Math.min(R.y0 + R.h - 1, cyMax);
+      let best = null;
+      for (const r of radii) {
+        if (!(r > 0)) continue;
+        for (let cy = y0; cy <= y1; cy += step) {
+          for (let cx = x0; cx <= x1; cx += step) {
+            const contrast = this.scoreAt(R, cx, cy, r);
+            const fillIn = this.lastFillIn;
+            if (fillIn < B.minInnerFill || contrast < B.minContrast) continue;
+            let score = contrast + 0.3 * fillIn;
+            if (predX !== null) {
+              const d = Math.hypot(cx + 0.5 - predX, cy + 0.5 - predY) / Math.max(1, searchRadius);
+              score -= B.distPenalty * d * d;
+            }
+            if (best === null || score > best.score) best = { x: cx, y: cy, r, score, contrast, fillIn };
+          }
+        }
+      }
+      return best;
+    }
+
+    // 후보 중심 주변 원 안의 마스크 무게중심으로 위치를 소수점 단위까지 보정.
+    // 원의 일부가 다리에 가려졌으면 무게중심이 반대쪽으로 쏠리므로 격자 중심을 그대로 씀
+    refineCentroid(R, cx, cy, r) {
+      const w = this.bufW, mask = this.mask, valid = this.valid, rr = r * r;
+      const x0 = Math.max(R.x0, Math.floor(cx - r)), x1 = Math.min(R.x0 + R.w - 1, Math.ceil(cx + r));
+      const y0 = Math.max(R.y0, Math.floor(cy - r)), y1 = Math.min(R.y0 + R.h - 1, Math.ceil(cy + r));
+      let sx = 0, sy = 0, n = 0, inside = 0, visible = 0;
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const dx = x - cx, dy = y - cy;
+          if (dx * dx + dy * dy > rr) continue;
+          inside++;
+          const m = y * w + x;
+          if (!valid[m]) continue;
+          visible++;
+          if (!mask[m]) continue;
+          sx += x + 0.5; sy += y + 0.5; n++;
+        }
+      }
+      if (n < 3 || visible < inside * 0.8) return { x: cx + 0.5, y: cy + 0.5 };
+      return { x: sx / n, y: sy / n };
+    }
+
+    // 조명 변화에 맞춰 공 색을 아주 조금씩 갱신
+    adaptColor(img, region, best) {
+      if (best.fillIn < 0.7) return;
+      const a = Math.max(1, Math.round(best.r * CONFIG.ball.innerRatio));
+      const w = img.width;
+      let sr = 0, sg = 0, sb = 0, n = 0;
+      const yEnd = Math.min(region.y0 + region.h - 1, best.y + a);
+      const xEnd = Math.min(region.x0 + region.w - 1, best.x + a);
+      for (let y = Math.max(region.y0, best.y - a); y <= yEnd; y++) {
+        for (let x = Math.max(region.x0, best.x - a); x <= xEnd; x++) {
+          const m = y * w + x;
+          if (!this.mask[m]) continue;
+          const p = m * 4;
+          sr += img.data[p]; sg += img.data[p + 1]; sb += img.data[p + 2]; n++;
+        }
+      }
+      if (n < 4) return;
+      const ycc = rgbToYcc(sr / n, sg / n, sb / n);
+      const k = CONFIG.ball.colorAdapt;
+      this.color.y += k * (ycc.y - this.color.y);
+      this.color.cb += k * (ycc.cb - this.color.cb);
+      this.color.cr += k * (ycc.cr - this.color.cr);
+    }
+
+    // 거리 변화에 맞춰 반지름을 천천히 보정(처음 크기의 0.6~1.6배 안에서)
+    adaptRadius(region, best) {
+      let bestK = 1, bestScore = -Infinity;
+      for (const k of [0.85, 1, 1.18]) {
+        const contrast = this.scoreAt(region, best.x, best.y, this.radius * k);
+        if (this.lastFillIn < CONFIG.ball.minInnerFill) continue;
+        const score = contrast + 0.3 * this.lastFillIn;
+        if (score > bestScore) { bestScore = score; bestK = k; }
+      }
+      const maxR = Math.min(this.bufW, this.bufH) * CONFIG.ball.maxRadiusFrac;
+      const next = this.radius * (1 + 0.3 * (bestK - 1));
+      this.radius = clamp(next, Math.max(CONFIG.ball.minRadius, this.initialRadius * 0.6), Math.min(maxR, this.initialRadius * 1.6));
+    }
+
+    observation(t, measured, zx, zy) {
+      return {
+        t, measured,
+        zx: measured ? zx : null, zy: measured ? zy : null,   // 이번 프레임 실측 위치
+        x: this.x, y: this.y, vx: this.vx, vy: this.vy,      // 필터링된 위치·속도
+        r: this.radius, status: this.status,
+      };
+    }
+
+    // ctx: { gravityPx: 화면 기준 중력(px/s²), exclusions: 다리 캡슐, expectedRadius: 몸 크기로 본 공 반지름 }
+    update(img, t, ctx = {}) {
+      if (this.status === 'idle' || !img || !this.color) return this.observation(t, false);
+      const B = CONFIG.ball;
+      const w = img.width, h = img.height;
+      this.ensureBuffers(w, h);
+      const dt = this.lastT === null ? 0 : clamp(t - this.lastT, 0, 0.25);
+      this.lastT = t;
+      const g = ctx.gravityPx > 0 ? ctx.gravityPx : 0;
+      const predX = this.x + this.vx * dt;
+      const predY = this.y + this.vy * dt + 0.5 * g * dt * dt;
+      const predVy = this.vy + g * dt;
+      const exclusions = ctx.exclusions || [];
+      let best = null;
+      let region = null;
+
+      if (this.status === 'lost') {
+        // 놓쳤으면 화면 전체를 2px 간격으로 훑고, 찾으면 1px로 다듬기
+        const baseR = this.radiusUncertain && ctx.expectedRadius > 0 ? ctx.expectedRadius : this.radius;
+        this.buildMask(img, 0, 0, w, h, exclusions);
+        region = this.buildIntegral(0, 0, w, h);
+        best = this.searchBest(region, 0, 0, w - 1, h - 1, 2, [baseR * 0.75, baseR, baseR * 1.3], null, null, 1);
+        if (best) {
+          const fine = this.searchBest(region, best.x - 2, best.y - 2, best.x + 2, best.y + 2, 1, [best.r], null, null, 1);
+          if (fine) best = fine;
+        }
+      } else {
+        // 추적 중이면 예측 위치 주변만(빠르고 배경을 공으로 착각할 일이 적음)
+        const r = this.radius;
+        const speed = Math.hypot(this.vx, predVy);
+        const searchRadius = 2.5 * r + speed * dt * 0.6 + 6 + this.coastSec * 150;
+        const margin = Math.ceil(r * B.ringOuterRatio) + 1;
+        const sx0 = Math.floor(predX - searchRadius), sx1 = Math.ceil(predX + searchRadius);
+        const sy0 = Math.floor(predY - searchRadius), sy1 = Math.ceil(predY + searchRadius);
+        const x0 = clamp(sx0 - margin, 0, w), x1 = clamp(sx1 + margin + 1, 0, w);
+        const y0 = clamp(sy0 - margin, 0, h), y1 = clamp(sy1 + margin + 1, 0, h);
+        if (x1 > x0 && y1 > y0) {
+          this.buildMask(img, x0, y0, x1, y1, exclusions);
+          region = this.buildIntegral(x0, y0, x1, y1);
+          best = this.searchBest(region, sx0, sy0, sx1, sy1, 1, [r], predX, predY, searchRadius);
+        }
+      }
+
+      if (best) {
+        const c = this.refineCentroid(region, best.x, best.y, best.r);
+        if (this.status === 'lost') {
+          this.x = c.x; this.y = c.y; this.vx = 0; this.vy = 0;
+          if (this.radiusUncertain) {
+            this.radius = best.r;
+            this.initialRadius = best.r;
+            this.radiusUncertain = false;
+          }
+        } else {
+          const ex = c.x - predX, ey = c.y - predY;
+          this.x = predX + B.alpha * ex;
+          this.y = predY + B.alpha * ey;
+          if (dt > 0) {
+            this.vx += (B.beta / dt) * ex;
+            this.vy = predVy + (B.beta / dt) * ey;
+          }
+        }
+        this.status = 'tracking';
+        this.coastSec = 0;
+        this.measuredCount++;
+        this.adaptColor(img, region, best);
+        if (this.measuredCount % 8 === 0) this.adaptRadius(region, best);
+        return this.observation(t, true, c.x, c.y);
+      }
+
+      if (this.status !== 'lost') {
+        // 못 찾으면 예측대로 잠깐 이어 가다가(가림 대비) 시간이 넘으면 '놓침'
+        this.x = predX; this.y = predY; this.vy = predVy;
+        this.coastSec += dt;
+        this.status = this.coastSec > B.coastMaxSec ? 'lost' : 'coasting';
+      }
+      return this.observation(t, false);
+    }
+  }
+
+  // ===== 리프팅 분석기 =====
+  // 공의 세로 움직임이 '떨어지다 → 올라가기'로 바뀌는 순간 = 터치. 그 순간 가장 가까운 몸 부위로 판정
+  class JuggleAnalyzer {
+    constructor() {
+      this.frameW = 0;
+      this.frameH = 0;
+      this.reset();
+    }
+
+    setFrameSize(w, h) { this.frameW = w; this.frameH = h; }
+
+    reset() {
+      this.poseHistory = new RingBuffer(90);
+      this.ballHistory = new RingBuffer(180);
+      this.viewRatios = new RingBuffer(45);
+      this.bodyHeightPx = null;
+      this.groundY = null;
+      this.view = 'unknown';
+      this.facingScore = 0;     // 측면: 선수가 화면 오른쪽(+)을 보는지
+      this.rightDirScore = 0;   // 정면: 선수의 오른쪽이 화면 오른쪽(+)인지
+      this.phase = 'unknown';   // unknown | falling | rising
+      this.lowest = null;
+      this.highest = null;
+      this.lastTouch = null;
+      this.lastTouchT = -Infinity;
+      this.touches = [];
+      this.sets = [];
+      this.currentStreak = 0;
+      this.bestStreak = 0;
+      this.setStartT = null;
+      this.setFirstTouchIndex = 0;
+      this.lastBallSeenT = null;
+      this.events = [];
+    }
+
+    get facingSign() { return Math.abs(this.facingScore) > 0.3 ? Math.sign(this.facingScore) : 0; }
+    get rightDirSign() { return Math.abs(this.rightDirScore) > 0.3 ? Math.sign(this.rightDirScore) : 0; }
+
+    update(t, pose, ball) {
+      if (pose) this.ingestPose(pose);
+      if (ball && ball.measured) {
+        this.ballHistory.push({ t, x: ball.zx, y: ball.zy, r: ball.r });
+        this.lastBallSeenT = t;
+        this.detectTouch(t);
+      }
+      this.checkSetTimeout(t, ball);
+      return this.drainEvents();
+    }
+
+    drainEvents() {
+      const out = this.events;
+      this.events = [];
+      return out;
+    }
+
+    ingestPose(p) {
+      this.poseHistory.push(p);
+      if (p.legLen > 0 && !p.feetCut) {
+        const h = p.legLen / CONFIG.legToBodyRatio;
+        this.bodyHeightPx = this.bodyHeightPx === null ? h : this.bodyHeightPx + 0.1 * (h - this.bodyHeightPx);
+      }
+      if (p.groundY !== null && !p.feetCut) {
+        this.groundY = this.groundY === null ? p.groundY : this.groundY + 0.25 * (p.groundY - this.groundY);
+      }
+      const P = p.px;
+      // 어깨 폭 / 몸통 길이: 정면이면 크고(≈0.8) 옆이면 작음(≈0.1)
+      if (p.torsoLen > 2 && P[LM.L_SHOULDER].v >= MIN_VIS && P[LM.R_SHOULDER].v >= MIN_VIS) {
+        this.viewRatios.push(Math.abs(P[LM.L_SHOULDER].x - P[LM.R_SHOULDER].x) / p.torsoLen);
+        const values = [];
+        for (let i = 0; i < this.viewRatios.length; i++) values.push(this.viewRatios.get(i));
+        const m = median(values);
+        this.view = m >= 0.6 ? 'front' : m <= 0.3 ? 'side' : 'oblique';
+        this.rightDirScore += 0.1 * (Math.sign(P[LM.R_SHOULDER].x - P[LM.L_SHOULDER].x) - this.rightDirScore);
+      }
+      // 측면일 때 바라보는 방향 = 코가 귀보다 어느 쪽에 있는지
+      const lEar = P[LM.L_EAR], rEar = P[LM.R_EAR];
+      if (P[LM.NOSE].v >= MIN_VIS && (lEar.v >= MIN_VIS || rEar.v >= MIN_VIS)) {
+        const earX = lEar.v >= MIN_VIS && rEar.v >= MIN_VIS ? (lEar.x + rEar.x) / 2 : (lEar.v >= MIN_VIS ? lEar.x : rEar.x);
+        this.facingScore += 0.1 * (Math.sign(P[LM.NOSE].x - earX) - this.facingScore);
+      }
+    }
+
+    speedThreshold() {
+      if (this.bodyHeightPx) return CONFIG.touch.speedThreshBodyPerSec * this.bodyHeightPx;
+      return CONFIG.touch.fallbackSpeedFramePerSec * (this.frameH || 180);
+    }
+
+    // 최근 실측 위치들의 최소제곱 기울기 = 세로 속도(px/s, +가 아래)
+    estimateBallVy(t) {
+      const W = CONFIG.touch.velWindowSec;
+      let n = 0, st = 0, sy = 0, stt = 0, sty = 0, prevT = t;
+      for (let k = 0; k < this.ballHistory.length; k++) {
+        const s = this.ballHistory.last(k);
+        if (!s || t - s.t > W || prevT - s.t > CONFIG.touch.maxSampleGapSec) break;
+        const dt = s.t - t;
+        n++; st += dt; sy += s.y; stt += dt * dt; sty += dt * s.y;
+        prevT = s.t;
+      }
+      if (n < 2) return null;
+      const den = n * stt - st * st;
+      if (den <= 1e-9) return null;
+      return (n * sty - st * sy) / den;
+    }
+
+    detectTouch(t) {
+      const vy = this.estimateBallVy(t);
+      if (vy === null) return;
+      const thresh = this.speedThreshold();
+      const s = this.ballHistory.last();
+      const copy = { t: s.t, x: s.x, y: s.y, r: s.r };
+      if (this.phase === 'falling') {
+        if (s.y > this.lowest.y) this.lowest = copy;
+        if (vy < -thresh) {
+          // 떨어지던 공이 올라가기 시작 → 가장 낮았던 순간에 무언가에 맞음
+          this.onReversal(this.refineBottom(this.lowest));
+          this.phase = 'rising';
+          this.highest = copy;
+        }
+      } else if (this.phase === 'rising') {
+        if (s.y < this.highest.y) this.highest = copy;
+        if (vy > thresh) {
+          this.onApex(this.highest);
+          this.phase = 'falling';
+          this.lowest = copy;
+        }
+      } else if (vy > thresh) {
+        this.phase = 'falling';
+        this.lowest = copy;
+      } else if (vy < -thresh) {
+        this.phase = 'rising';
+        this.highest = copy;
+      }
+    }
+
+    // 터치 순간 공이 다리에 가려 프레임이 비면 최저점이 실제보다 높게 잡힘
+    // → 직전 낙하선과 직후 상승선의 교점으로 최저점을 보정
+    refineBottom(low) {
+      const hist = this.ballHistory;
+      // 최저점 근처(±0.25초)에서 가장 긴 빈 구간 찾기
+      let gapIndex = -1, gapLen = 0, frameDt = Infinity;
+      for (let i = 1; i < hist.length; i++) {
+        const p = hist.get(i - 1), q = hist.get(i);
+        const dt = q.t - p.t;
+        if (dt > 0 && dt < frameDt) frameDt = dt;
+        if (Math.abs(p.t - low.t) > 0.25 && Math.abs(q.t - low.t) > 0.25) continue;
+        if (dt > gapLen) { gapLen = dt; gapIndex = i; }
+      }
+      if (gapIndex < 2 || gapIndex + 1 >= hist.length || !(gapLen > frameDt * 1.5)) return low;
+      const a = hist.get(gapIndex - 2), b = hist.get(gapIndex - 1);
+      const c = hist.get(gapIndex), d = hist.get(gapIndex + 1);
+      const fallSpeed = (b.y - a.y) / (b.t - a.t);
+      const riseSpeed = (d.y - c.y) / (d.t - c.t);
+      if (!(fallSpeed > 0) || !(riseSpeed < 0)) return low;   // 빈 구간이 바닥(방향 전환)이 아님
+      const tStar = (c.y - b.y + fallSpeed * b.t - riseSpeed * c.t) / (fallSpeed - riseSpeed);
+      if (!(tStar > b.t && tStar < c.t)) return low;
+      const yStar = Math.min(b.y + fallSpeed * (tStar - b.t), b.y + 2.5 * b.r);   // 과한 외삽 방지
+      if (yStar <= low.y) return low;
+      const frac = (tStar - b.t) / (c.t - b.t);
+      return { t: tStar, x: b.x + (c.x - b.x) * frac, y: yStar, r: b.r };
+    }
+
+    poseNear(t) {
+      let best = null, bestDt = Infinity;
+      for (let k = 0; k < this.poseHistory.length; k++) {
+        const p = this.poseHistory.last(k);
+        const d = Math.abs(p.t - t);
+        if (d < bestDt) { best = p; bestDt = d; }
+        if (p.t < t - 0.3) break;
+      }
+      return bestDt <= 0.15 ? best : null;
+    }
+
+    isFootRaised(side, pose) {
+      if (this.groundY === null || !this.bodyHeightPx) return true;
+      const P = pose.px;
+      const ids = side === 'L' ? [LM.L_ANKLE, LM.L_HEEL, LM.L_TOE] : [LM.R_ANKLE, LM.R_HEEL, LM.R_TOE];
+      const lowestY = Math.max(...ids.map((i) => P[i].y));
+      return lowestY < this.groundY - CONFIG.touch.footRaisedBody * this.bodyHeightPx;
+    }
+
+    // 접촉점(공 아래쪽)에서 가장 가까운 부위. 바닥 근처인데 들린 발이 없으면 'ground'(공을 떨어뜨림)
+    classifyPart(contact, r, pose) {
+      const H = this.bodyHeightPx;
+      if (!pose || !H) return 'unknown';
+      const P = pose.px;
+      const vis = (i) => P[i].v >= MIN_VIS;
+      const candidates = [];
+      const footDist = (ankle, heel, toe) => Math.min(
+        segDist(contact, P[ankle], P[toe]), segDist(contact, P[heel], P[toe]), segDist(contact, P[ankle], P[heel])
+      );
+      if (vis(LM.L_ANKLE) && vis(LM.L_TOE)) candidates.push({ part: 'footL', side: 'L', d: footDist(LM.L_ANKLE, LM.L_HEEL, LM.L_TOE), y: Math.max(P[LM.L_ANKLE].y, P[LM.L_TOE].y) });
+      if (vis(LM.R_ANKLE) && vis(LM.R_TOE)) candidates.push({ part: 'footR', side: 'R', d: footDist(LM.R_ANKLE, LM.R_HEEL, LM.R_TOE), y: Math.max(P[LM.R_ANKLE].y, P[LM.R_TOE].y) });
+      // 허벅지 터치는 그 다리 무릎이 반대쪽보다 확실히 들려 있을 때만 후보(디딤다리 허벅지 오판 방지)
+      const kneeRaised = (knee, otherKnee) => vis(knee) && vis(otherKnee) && P[knee].y < P[otherKnee].y - 0.06 * H;
+      if (vis(LM.L_HIP) && kneeRaised(LM.L_KNEE, LM.R_KNEE)) candidates.push({ part: 'thighL', d: segDist(contact, lerpPoint(P[LM.L_HIP], P[LM.L_KNEE], 0.4), P[LM.L_KNEE]) });
+      if (vis(LM.R_HIP) && kneeRaised(LM.R_KNEE, LM.L_KNEE)) candidates.push({ part: 'thighR', d: segDist(contact, lerpPoint(P[LM.R_HIP], P[LM.R_KNEE], 0.4), P[LM.R_KNEE]) });
+      if (vis(LM.NOSE)) candidates.push({ part: 'head', d: distance(contact, { x: P[LM.NOSE].x, y: P[LM.NOSE].y - 0.07 * H }) });
+      if (!candidates.length) return 'unknown';
+      candidates.sort((a, b) => a.d - b.d);
+      let best = candidates[0];
+      // 두 발이 비슷하게 가까우면 더 높이 든 발을 선택
+      if (best.side) {
+        const other = candidates.find((c) => c.side && c !== best);
+        if (other && other.d - best.d < 0.5 * r && other.y < best.y - 0.02 * H) best = other;
+      }
+      // 공 아랫면이 사실상 지면이면 발 근처라도 바닥 바운드(발등 터치는 지면보다 꽤 위에서 일어남)
+      if (this.groundY !== null && contact.y >= this.groundY - 0.025 * H) return 'ground';
+      const nearGround = this.groundY !== null && contact.y >= this.groundY - CONFIG.touch.groundMarginBody * H;
+      const maxDist = CONFIG.touch.partMaxDistBallR * r + CONFIG.touch.partMaxDistBody * H;
+      if (best.d <= maxDist) {
+        if (nearGround && best.side && !this.isFootRaised(best.side, pose)) return 'ground';
+        return best.part;
+      }
+      return nearGround ? 'ground' : 'unknown';
+    }
+
+    onReversal(low) {
+      if (low.t - this.lastTouchT < CONFIG.touch.minIntervalSec) return;
+      const pose = this.poseNear(low.t);
+      const contact = { x: low.x, y: low.y + low.r * 0.8 };
+      const part = this.classifyPart(contact, low.r, pose);
+      if (part === 'ground') {
+        this.endSet(low.t, 'drop');
+        return;
+      }
+      if (this.currentStreak === 0) {
+        this.setStartT = low.t;
+        this.setFirstTouchIndex = this.touches.length;
+      }
+      this.lastTouchT = low.t;
+      this.currentStreak++;
+      if (this.currentStreak > this.bestStreak) this.bestStreak = this.currentStreak;
+      const record = this.measureTouch(low, part, contact, pose);
+      const prev = this.lastTouch;
+      if (prev && prev.setIndex === record.setIndex) this.attachDrift(prev, record);
+      this.touches.push(record);
+      this.lastTouch = record;
+      this.events.push({ type: 'touch', t: low.t, part, streak: this.currentStreak, record });
+    }
+
+    measureTouch(low, part, contact, pose) {
+      const record = {
+        index: this.touches.length, setIndex: this.sets.length, t: low.t, part,
+        x: low.x, y: low.y, contactY: contact.y, view: this.view,
+        rise: null, drift: null, metrics: {}, flags: [],
+      };
+      const H = this.bodyHeightPx;
+      if (!pose || !H) return record;
+      const P = pose.px, P3 = pose.world;
+      const posture = CONFIG.posture;
+      const side = part.endsWith('L') ? 'L' : part.endsWith('R') ? 'R' : null;
+      const isFoot = part === 'footL' || part === 'footR';
+
+      // 디딤다리 무릎 각도: 정면에선 굽힘이 2D로 안 보이므로 3D(world) 좌표 사용
+      if (side) {
+        const stand = side === 'L'
+          ? [LM.R_HIP, LM.R_KNEE, LM.R_ANKLE]
+          : [LM.L_HIP, LM.L_KNEE, LM.L_ANKLE];
+        if (stand.every((i) => P[i].v >= MIN_VIS)) {
+          const src = P3 || P;
+          const knee = angleAtDeg(src[stand[0]], src[stand[1]], src[stand[2]]);
+          if (Number.isFinite(knee)) {
+            record.metrics.standingKnee = knee;
+            if (knee > posture.stiffKneeDeg) record.flags.push('stiffStandingLeg');
+          }
+        }
+      }
+      // 터치 높이 = 지면에서 접촉점까지 / 다리 길이
+      if (isFoot && this.groundY !== null && pose.legLen > 0) {
+        const contactHeight = (this.groundY - contact.y) / pose.legLen;
+        record.metrics.contactHeight = contactHeight;
+        if (contactHeight > posture.highContactLeg) record.flags.push('highContact');
+      }
+      // 상체 기울기: 엉덩이 중심 → 어깨 중심 선이 수직에서 벗어난 정도
+      {
+        const dx = pose.shoulderMid.x - pose.hipMid.x;
+        const dy = pose.hipMid.y - pose.shoulderMid.y;
+        if (dy > 1) {
+          const tilt = Math.abs(Math.atan2(dx, dy)) * 180 / Math.PI;
+          record.metrics.torsoTilt = tilt;
+          if (tilt > posture.torsoTiltDeg) record.flags.push('torsoTilt');
+        }
+      }
+      // 발등 기울기(측면에서만 의미 있음): 뒤꿈치→발끝 선이 수평보다 위(+)/아래(-)
+      if (isFoot && this.view === 'side' && this.facingSign !== 0) {
+        const heel = P[side === 'L' ? LM.L_HEEL : LM.R_HEEL];
+        const toe = P[side === 'L' ? LM.L_TOE : LM.R_TOE];
+        const forward = (toe.x - heel.x) * this.facingSign;
+        const up = heel.y - toe.y;
+        if (heel.v >= MIN_VIS && toe.v >= MIN_VIS && forward > 1) {
+          const pitch = Math.atan2(up, forward) * 180 / Math.PI;
+          record.metrics.footPitch = pitch;
+          if (pitch < posture.toeDownDeg) record.flags.push('toeDown');
+          else if (pitch > posture.toeUpDeg) record.flags.push('toeUp');
+        }
+      }
+      return record;
+    }
+
+    // 다음 터치까지 공이 수평으로 얼마나 흘렀나 → 이전 터치(공을 보낸 터치)에 기록
+    attachDrift(prev, next) {
+      const H = this.bodyHeightPx;
+      if (!H) return;
+      const dx = (next.x - prev.x) / H;
+      prev.drift = dx;
+      const limit = CONFIG.posture.driftBody;
+      if (this.view === 'front' && this.rightDirSign !== 0) {
+        const toPlayerRight = dx * this.rightDirSign;
+        if (Math.abs(toPlayerRight) > limit) prev.flags.push(toPlayerRight > 0 ? 'driftRight' : 'driftLeft');
+      } else if (this.view === 'side' && this.facingSign !== 0) {
+        const forward = dx * this.facingSign;
+        if (Math.abs(forward) > limit) prev.flags.push(forward > 0 ? 'driftForward' : 'driftBack');
+      }
+    }
+
+    // 꼭대기 도달 → 직전 터치가 공을 얼마나 띄웠는지 기록
+    onApex(apex) {
+      const prev = this.lastTouch;
+      const H = this.bodyHeightPx;
+      if (!prev || this.currentStreak === 0 || apex.t <= prev.t || !H || prev.rise !== null) return;
+      const rise = (prev.y - apex.y) / H;
+      prev.rise = rise;
+      const nearTopEdge = apex.y < apex.r * 1.5;   // 화면 위로 나갔다면 실제로는 더 높음
+      if (rise > CONFIG.posture.tooHighRise || nearTopEdge) prev.flags.push('tooHigh');
+      else if (rise < CONFIG.posture.tooLowRise) prev.flags.push('tooLow');
+    }
+
+    endSet(t, reason) {
+      if (this.currentStreak <= 0) return;
+      const setTouches = this.touches.slice(this.setFirstTouchIndex);
+      const set = {
+        index: this.sets.length, count: this.currentStreak,
+        startT: this.setStartT, endT: this.lastTouchT, reason,
+        topIssue: this.topIssue(setTouches),
+      };
+      this.sets.push(set);
+      this.currentStreak = 0;
+      this.lastTouch = null;
+      this.setStartT = null;
+      this.events.push({ type: 'setEnd', t, set });
+    }
+
+    checkSetTimeout(t, ball) {
+      if (this.currentStreak <= 0) return;
+      if (t - this.lastTouchT > CONFIG.streak.endAfterNoTouchSec) this.endSet(t, 'timeout');
+      else if (ball && ball.status === 'lost' && this.lastBallSeenT !== null && t - this.lastBallSeenT > CONFIG.streak.endAfterLostSec) this.endSet(t, 'lost');
+    }
+
+    finish(t) {
+      this.endSet(t, 'stopped');
+      return this.drainEvents();
+    }
+
+    countFlags(touchList) {
+      const counts = {};
+      for (const rec of touchList) for (const f of rec.flags) counts[f] = (counts[f] || 0) + 1;
+      return counts;
+    }
+
+    // 세트 전체에서 가장 자주 나온 문제(최소 2회, 터치의 1/3 이상)
+    topIssue(touchList) {
+      if (!touchList.length) return null;
+      const counts = this.countFlags(touchList);
+      const minCount = Math.max(2, Math.ceil(touchList.length / 3));
+      let best = null;
+      for (const key of ISSUE_PRIORITY) {
+        if ((counts[key] || 0) >= minCount && (best === null || counts[key] > counts[best])) best = key;
+      }
+      return best;
+    }
+
+    // 진행 중인 세트의 최근 터치에서 반복되는 문제 → 실시간 코칭 문구
+    currentTip() {
+      if (this.currentStreak <= 0) return null;
+      const recent = this.touches.slice(Math.max(this.setFirstTouchIndex, this.touches.length - CONFIG.posture.issueWindow));
+      const counts = this.countFlags(recent);
+      let best = null;
+      for (const key of ISSUE_PRIORITY) {
+        if ((counts[key] || 0) >= CONFIG.posture.issueMinCount && (best === null || counts[key] > counts[best])) best = key;
+      }
+      return best;
+    }
+
+    summary() {
+      const touches = this.touches;
+      const partCounts = { footR: 0, footL: 0, thighR: 0, thighL: 0, head: 0, unknown: 0 };
+      for (const rec of touches) partCounts[rec.part] = (partCounts[rec.part] || 0) + 1;
+      const feet = partCounts.footL + partCounts.footR;
+      const rises = touches.filter((r) => r.rise !== null).map((r) => r.rise);
+      const intervals = [];
+      for (let i = 1; i < touches.length; i++) {
+        if (touches[i].setIndex === touches[i - 1].setIndex) intervals.push(touches[i].t - touches[i - 1].t);
+      }
+      const applicable = {
+        stiffStandingLeg: (r) => r.metrics.standingKnee !== undefined,
+        highContact: (r) => r.metrics.contactHeight !== undefined,
+        torsoTilt: (r) => r.metrics.torsoTilt !== undefined,
+        toeDown: (r) => r.metrics.footPitch !== undefined,
+        toeUp: (r) => r.metrics.footPitch !== undefined,
+        tooHigh: (r) => r.rise !== null,
+        tooLow: (r) => r.rise !== null,
+        driftLeft: (r) => r.drift !== null,
+        driftRight: (r) => r.drift !== null,
+        driftForward: (r) => r.drift !== null,
+        driftBack: (r) => r.drift !== null,
+      };
+      const issues = [];
+      for (const key of ISSUE_PRIORITY) {
+        const base = touches.filter(applicable[key]).length;
+        const count = touches.filter((r) => r.flags.includes(key)).length;
+        if (count > 0 && base > 0) issues.push({ key, count, base, rate: count / base });
+      }
+      issues.sort((a, b) => b.rate - a.rate || b.count - a.count);
+      const setCounts = this.sets.map((s) => s.count);
+      return {
+        totalTouches: touches.length,
+        bestStreak: this.bestStreak,
+        setCount: this.sets.length,
+        averageSet: setCounts.length ? meanOf(setCounts) : 0,
+        partCounts,
+        weakFootShare: feet >= 4 ? Math.min(partCounts.footL, partCounts.footR) / feet : null,
+        weakFootSide: partCounts.footL <= partCounts.footR ? 'L' : 'R',
+        avgRise: rises.length ? meanOf(rises) : null,
+        riseCv: coefficientOfVariation(rises),
+        avgInterval: intervals.length ? meanOf(intervals) : null,
+        rhythmCv: coefficientOfVariation(intervals),
+        issues,
+        sets: this.sets.slice(),
+        view: this.view,
+      };
+    }
+  }
+
+  // ===== 데모·테스트용 합성 리프팅 장면 =====
+  // 정면에서 본 사람이 양발로 번갈아 리프팅. 가끔 공을 떨어뜨리고, 가끔 일부러 자세 문제를 섞음
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function next() {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function createJuggleSimulation(options = {}) {
+    const width = options.width || 320;
+    const height = options.height || 180;
+    const rand = mulberry32(options.seed || 11);
+    const pxPerM = (height * 0.8) / 1.7;
+    const groundPx = height * 0.93;
+    const centerPx = width * 0.55;
+    const G = 9.81, BALL_R = 0.11, CONTACT_H = 0.32;
+    const sim = {
+      t: 0, ballX: 0.12, ballY: 1.0, vx: 0, vy: 0, phase: 'juggling',
+      nextFoot: 'R', lift: { L: 0, R: 0 }, bodyX: 0, footX: { L: 0.11, R: -0.11 },
+      touchesInSet: 0, dropAfter: 8 + Math.floor(rand() * 10), restUntil: 0,
+      straightKnee: false, truthTouches: 0, truthDrops: 0, touchLog: [],
+    };
+
+    function startNewSet() {
+      sim.phase = 'juggling';
+      sim.ballX = sim.bodyX + (sim.nextFoot === 'R' ? -0.1 : 0.1);
+      sim.ballY = 1.0; sim.vx = 0; sim.vy = 0;
+      sim.touchesInSet = 0;
+      sim.dropAfter = 8 + Math.floor(rand() * 12);
+    }
+
+    function relaxFeet(dt) {
+      for (const side of ['L', 'R']) {
+        sim.lift[side] = Math.max(0, sim.lift[side] - dt / 0.2);
+        const home = sim.bodyX + (side === 'L' ? 0.11 : -0.11);
+        sim.footX[side] += (home - sim.footX[side]) * Math.min(1, dt * 4);
+      }
+    }
+
+    function updateFeet(dt) {
+      const foot = sim.nextFoot, other = foot === 'R' ? 'L' : 'R';
+      const h = sim.ballY - CONTACT_H;
+      const tContact = h > 0 ? (sim.vy + Math.sqrt(sim.vy * sim.vy + 2 * G * h)) / G : 0;
+      const target = tContact < 0.32 ? 1 - tContact / 0.32 : 0;
+      sim.lift[foot] = Math.max(sim.lift[foot] - dt / 0.25, target);
+      sim.lift[other] = Math.max(0, sim.lift[other] - dt / 0.2);
+      sim.footX[foot] += (sim.ballX - sim.footX[foot]) * Math.min(1, dt * 12);
+      const home = sim.bodyX + (other === 'L' ? 0.11 : -0.11);
+      sim.footX[other] += (home - sim.footX[other]) * Math.min(1, dt * 4);
+      sim.bodyX = clamp(sim.bodyX + (sim.ballX - sim.bodyX) * Math.min(1, dt * 1.2), -0.8, 0.8);
+    }
+
+    function step(dt) {
+      sim.t += dt;
+      if (sim.phase === 'resting') {
+        relaxFeet(dt);
+        if (sim.t >= sim.restUntil) startNewSet();
+        return;
+      }
+      sim.vy -= G * dt;
+      sim.ballY += sim.vy * dt;
+      sim.ballX += sim.vx * dt;
+      if (sim.phase === 'juggling') {
+        updateFeet(dt);
+        if (sim.vy < 0 && sim.ballY <= CONTACT_H) {
+          if (sim.touchesInSet >= sim.dropAfter) {
+            sim.phase = 'dropping';            // 이번엔 헛발질
+          } else {
+            sim.ballY = CONTACT_H;
+            const high = rand() < 0.12;
+            const rise = high ? 1.3 + rand() * 0.3 : 0.45 + rand() * 0.25;
+            sim.vy = Math.sqrt(2 * G * rise);
+            // 몸 가운데로 되돌리는 성분 + 잡음 + 가끔 한쪽으로 흘림(화면 밖으로 나가지 않게)
+            sim.vx = -0.9 * sim.ballX + (rand() - 0.5) * 0.12 + (rand() < 0.15 ? 0.4 : 0);
+            sim.straightKnee = rand() < 0.3;
+            sim.touchesInSet++;
+            sim.truthTouches++;
+            sim.touchLog.push({ t: sim.t, foot: sim.nextFoot, high, straightKnee: sim.straightKnee });
+            sim.nextFoot = sim.nextFoot === 'R' ? 'L' : 'R';
+          }
+        }
+      } else {
+        relaxFeet(dt);
+      }
+      if (sim.ballY <= BALL_R && sim.vy < 0) {
+        if (sim.phase !== 'grounded') sim.truthDrops++;
+        sim.phase = 'grounded';
+        sim.ballY = BALL_R;
+        sim.vy = -sim.vy * 0.45;
+        sim.vx *= 0.6;
+        if (sim.vy < 0.5) {
+          sim.vy = 0; sim.vx = 0;
+          sim.phase = 'resting';
+          sim.restUntil = sim.t + 1.6;
+        }
+      }
+    }
+
+    // 세계 좌표(미터, 지면 기준 높이 h) → 화면 픽셀
+    const toPx = (x, h) => ({ x: centerPx + x * pxPerM, y: groundPx - h * pxPerM });
+
+    function joints() {
+      const j = {};
+      const bx = sim.bodyX;
+      const kneeZ = sim.straightKnee ? -0.005 : -0.05;
+      // 정면을 보고 있으므로 선수의 왼쪽(L)이 화면 오른쪽(+x)
+      j.nose = { x: bx, h: 1.55, z: -0.1 };
+      j.lEar = { x: bx + 0.075, h: 1.58, z: 0 }; j.rEar = { x: bx - 0.075, h: 1.58, z: 0 };
+      j.lSh = { x: bx + 0.19, h: 1.4, z: 0 }; j.rSh = { x: bx - 0.19, h: 1.4, z: 0 };
+      j.lEl = { x: bx + 0.3, h: 1.15, z: 0 }; j.rEl = { x: bx - 0.3, h: 1.15, z: 0 };
+      j.lWr = { x: bx + 0.38, h: 0.95, z: -0.05 }; j.rWr = { x: bx - 0.38, h: 0.95, z: -0.05 };
+      j.lHip = { x: bx + 0.1, h: 0.88, z: 0 }; j.rHip = { x: bx - 0.1, h: 0.88, z: 0 };
+      for (const side of ['L', 'R']) {
+        const lift = sim.lift[side];
+        const fx = sim.footX[side];
+        const hip = side === 'L' ? j.lHip : j.rHip;
+        const ankleH = 0.08 + 0.12 * lift;
+        const ankleZ = -0.1 * lift;
+        const knee = { x: hip.x + (fx - hip.x) * 0.5, h: 0.47 + 0.2 * lift, z: (lift > 0.05 ? -0.05 : kneeZ) - 0.25 * lift };
+        const ankle = { x: fx, h: ankleH, z: ankleZ };
+        const heel = { x: fx, h: ankleH - 0.03, z: ankleZ + 0.05 };
+        const toe = { x: fx, h: ankleH - 0.05, z: ankleZ - 0.15 };
+        j[side + 'Knee'] = knee; j[side + 'Ankle'] = ankle; j[side + 'Heel'] = heel; j[side + 'Toe'] = toe;
+      }
+      return j;
+    }
+
+    function landmarks() {
+      const j = joints();
+      const map = new Array(33).fill(null);
+      const put = (i, p) => { map[i] = p; };
+      put(0, j.nose);
+      for (const i of [1, 2, 3]) put(i, { x: j.nose.x + 0.03, h: 1.6, z: -0.08 });
+      for (const i of [4, 5, 6]) put(i, { x: j.nose.x - 0.03, h: 1.6, z: -0.08 });
+      put(7, j.lEar); put(8, j.rEar);
+      put(9, { x: j.nose.x + 0.025, h: 1.5, z: -0.09 }); put(10, { x: j.nose.x - 0.025, h: 1.5, z: -0.09 });
+      put(11, j.lSh); put(12, j.rSh); put(13, j.lEl); put(14, j.rEl); put(15, j.lWr); put(16, j.rWr);
+      for (const i of [17, 19, 21]) put(i, j.lWr);
+      for (const i of [18, 20, 22]) put(i, j.rWr);
+      put(23, j.lHip); put(24, j.rHip);
+      put(25, j.LKnee); put(26, j.RKnee); put(27, j.LAnkle); put(28, j.RAnkle);
+      put(29, j.LHeel); put(30, j.RHeel); put(31, j.LToe); put(32, j.RToe);
+      const image = map.map((p) => {
+        const q = toPx(p.x, p.h);
+        return { x: q.x / width, y: q.y / height, z: p.z, visibility: 0.99 };
+      });
+      // MediaPipe world 좌표처럼: 엉덩이 중심이 원점, y는 아래가 +
+      const world = map.map((p) => ({ x: p.x - sim.bodyX, y: -(p.h - 0.88), z: p.z }));
+      return { image, world };
+    }
+
+    function ballPx() {
+      const p = toPx(sim.ballX, sim.ballY);
+      return { x: p.x, y: p.y, r: BALL_R * pxPerM };
+    }
+
+    // ---- 아주 단순한 래스터 그리기(테스트 환경엔 canvas가 없어서 직접 칠함) ----
+    function fillCapsule(img, ax, ay, bx, by, r, rgb) {
+      const d = img.data, w = img.width, h = img.height;
+      const x0 = Math.max(0, Math.floor(Math.min(ax, bx) - r)), x1 = Math.min(w - 1, Math.ceil(Math.max(ax, bx) + r));
+      const y0 = Math.max(0, Math.floor(Math.min(ay, by) - r)), y1 = Math.min(h - 1, Math.ceil(Math.max(ay, by) + r));
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          if (distPointToSegment(x + 0.5, y + 0.5, ax, ay, bx, by) > r) continue;
+          const p = (y * w + x) * 4;
+          d[p] = rgb[0]; d[p + 1] = rgb[1]; d[p + 2] = rgb[2]; d[p + 3] = 255;
+        }
+      }
+    }
+
+    function paint(img) {
+      const d = img.data, w = img.width, h = img.height;
+      const sx = w / width, sy = h / height;
+      for (let y = 0; y < h; y++) {
+        const grass = y >= groundPx * sy;
+        for (let x = 0; x < w; x++) {
+          const p = (y * w + x) * 4;
+          const noise = ((x * 7 + y * 13) % 9) - 4;
+          const pole = x >= w * 0.12 && x < w * 0.15;      // 흰 기둥: 흰 공과 헷갈리게 만드는 방해물
+          if (pole) { d[p] = 228 + noise; d[p + 1] = 228 + noise; d[p + 2] = 226 + noise; }
+          else if (grass) { d[p] = 56 + noise; d[p + 1] = 108 + noise; d[p + 2] = 62 + noise; }
+          else { d[p] = 92 + noise; d[p + 1] = 108 + noise; d[p + 2] = 100 + noise; }
+          d[p + 3] = 255;
+        }
+      }
+      const j = joints();
+      const P = (q) => { const s = toPx(q.x, q.h); return [s.x * sx, s.y * sy]; };
+      const m = pxPerM * sx;
+      const skin = [196, 152, 124], white = [238, 238, 236], navy = [36, 52, 108], black = [28, 28, 30];
+      const hipMid = { x: (j.lHip.x + j.rHip.x) / 2, h: 0.88 }, shMid = { x: (j.lSh.x + j.rSh.x) / 2, h: 1.4 };
+      fillCapsule(img, ...P(hipMid), ...P(shMid), 0.16 * m, navy);
+      fillCapsule(img, ...P(j.lSh), ...P(j.lWr), 0.04 * m, skin);
+      fillCapsule(img, ...P(j.rSh), ...P(j.rWr), 0.04 * m, skin);
+      fillCapsule(img, ...P(j.nose), ...P(j.nose), 0.1 * m, skin);
+      for (const side of ['L', 'R']) {
+        const hip = side === 'L' ? j.lHip : j.rHip;
+        fillCapsule(img, ...P(hip), ...P(j[side + 'Knee']), 0.065 * m, skin);
+        fillCapsule(img, ...P(j[side + 'Knee']), ...P(j[side + 'Ankle']), 0.05 * m, white);   // 흰 양말
+        fillCapsule(img, ...P(j[side + 'Heel']), ...P(j[side + 'Toe']), 0.04 * m, black);
+      }
+      const ball = ballPx();
+      const bx = ball.x * sx, by = ball.y * sy, br = ball.r * sx;
+      fillCapsule(img, bx, by, bx, by, br, white);
+      fillCapsule(img, bx - br * 0.35, by - br * 0.2, bx - br * 0.35, by - br * 0.2, br * 0.22, black);
+      fillCapsule(img, bx + br * 0.4, by + br * 0.3, bx + br * 0.4, by + br * 0.3, br * 0.2, black);
+    }
+
+    return { width, height, sim, step, landmarks, ballPx, paint };
+  }
+
+  global.JuggleCore = Object.freeze({
+    CONFIG, LM, PART_LABELS, ISSUES, ISSUE_PRIORITY,
+    RingBuffer, BallTracker, JuggleAnalyzer, createJuggleSimulation,
+    buildPoseFrame, legExclusions, angleAtDeg, distPointToSegment, median, rgbToYcc,
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+// ==CORE END==
+</script>
+
+<script type="module">
+const { CONFIG, BallTracker, JuggleAnalyzer, createJuggleSimulation, buildPoseFrame, legExclusions, ISSUES, PART_LABELS } = window.JuggleCore;
+
+// ===== MediaPipe (버전 고정: 갑자기 바뀌어 깨지는 것 방지) =====
+const TASKS_VERSION = '0.10.14';
+const TASKS_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}`;
+const MODEL_URLS = [
+  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task',
+];
+const STORAGE_KEYS = Object.freeze({ ballColor: 'liftingCoach.ballColor.v1', bestEver: 'liftingCoach.bestEver.v1' });
+const DEMO_DURATION_SEC = 45;
+const DEMO_STEP = 1 / 30;
+const SKELETON = [
+  [11, 12], [11, 23], [12, 24], [23, 24], [11, 13], [13, 15], [12, 14], [14, 16],
+  [23, 25], [25, 27], [27, 29], [29, 31], [27, 31], [24, 26], [26, 28], [28, 30], [30, 32], [28, 32],
+];
+
+const $ = (id) => document.getElementById(id);
+const els = {
+  stage: $('stage'), stageMedia: $('stageMedia'), video: $('video'), overlay: $('overlay'), stageEmpty: $('stageEmpty'),
+  hud: $('hud'), streakNum: $('streakNum'), bestNum: $('bestNum'), totalNum: $('totalNum'), bestEverNum: $('bestEverNum'),
+  tapHint: $('tapHint'), tipBar: $('tipBar'), tipText: $('tipText'), loading: $('loading'), loadingText: $('loadingText'),
+  idleControls: $('idleControls'), runControls: $('runControls'),
+  btnCamera: $('btnCamera'), btnUpload: $('btnUpload'), btnDemo: $('btnDemo'), fileInput: $('fileInput'),
+  btnPlay: $('btnPlay'), btnPickBall: $('btnPickBall'), btnFlip: $('btnFlip'), btnStop: $('btnStop'),
+  optSound: $('optSound'), optVoice: $('optVoice'),
+  alertBox: $('alertBox'), alertText: $('alertText'), alertAction: $('alertAction'),
+  chipPose: $('chipPose'), chipBall: $('chipBall'), chipView: $('chipView'), chipFps: $('chipFps'),
+  setsList: $('setsList'), setsMeta: $('setsMeta'), setsBadge: $('setsBadge'), summaryCard: $('summaryCard'), summaryBody: $('summaryBody'),
+  btnNewSession: $('btnNewSession'), ringFill: $('ringFill'), hudBest: $('hudBest'),
+};
+
+// localStorage는 막혀 있을 수 있으니 실패해도 앱은 그대로 동작
+const storage = {
+  read(key) { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch { return null; } },
+  write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* 저장 불가 환경 무시 */ } },
+};
+
+class UserFacingError extends Error {}
+
+const app = {
+  mode: 'idle',                // idle | camera | file | demo
+  facing: 'environment',
+  mirrored: false,
+  stream: null,
+  fileUrl: null,
+  visionApi: null, fileset: null, pose: null, poseLoading: null, poseDelegate: null,
+  running: false, loopHandle: null, loopKind: null,
+  videoW: 0, videoH: 0, analysisW: 0, analysisH: 0,
+  analysisCanvas: document.createElement('canvas'), analysisCtx: null,
+  demo: null, demoImage: null, demoCanvas: null, demoCtx: null, demoT: 0, demoAccum: 0, demoLastNow: 0,
+  latestImage: null, lastMediaTime: -1, lastDetectTs: 0,
+  tracker: new BallTracker(), analyzer: new JuggleAnalyzer(),
+  tapMode: false, resumeAfterTap: false,
+  overlayCtx: null, dpr: 1, colors: null,
+  lastPose: null, lastBall: null, trail: [], flashes: [],
+  audio: null, wakeLock: null,
+  fps: { frames: 0, since: 0, value: 0, startedAt: 0, warned: false },
+  lastPoseSeenAt: 0, lastTipAt: 0, consecutiveErrors: 0,
+  bestEver: Number(storage.read(STORAGE_KEYS.bestEver)) || 0,
+  shown: { streak: -1, best: -1, total: -1, bestEver: -1 },
+  lastContainerW: 0,
+};
+app.analysisCtx = app.analysisCanvas.getContext('2d', { willReadFrequently: true });
+app.overlayCtx = els.overlay.getContext('2d');
+
+// ===== 알림·로딩·화면 상태 =====
+function showAlert(message, action) {
+  els.alertText.textContent = message;
+  els.alertBox.hidden = false;
+  if (action && action.label) {
+    els.alertAction.textContent = action.label;
+    els.alertAction.hidden = false;
+    els.alertAction.onclick = () => { hideAlert(); action.run(); };
+  } else {
+    els.alertAction.hidden = true;
+    els.alertAction.onclick = null;
+  }
+}
+function hideAlert() { els.alertBox.hidden = true; els.alertAction.onclick = null; }
+function setLoading(text) {
+  els.loading.hidden = !text;
+  if (text) els.loadingText.textContent = text;
+  for (const b of [els.btnCamera, els.btnUpload, els.btnDemo]) b.disabled = Boolean(text);
+}
+
+// idle: 시작 전 | ready: 영상 열림(재생 대기) | running: 분석 중 | finished: 결과 보기
+function setUiState(state) {
+  const isSource = state === 'ready' || state === 'running';
+  els.idleControls.hidden = isSource;
+  els.runControls.hidden = !isSource;
+  els.btnPlay.hidden = state !== 'ready';
+  els.btnFlip.hidden = !(state === 'running' && app.mode === 'camera');
+  els.btnPickBall.hidden = !isSource;
+  els.stageEmpty.hidden = state !== 'idle';
+  els.stageMedia.hidden = state === 'idle';
+  els.hud.hidden = state === 'idle';
+  els.tipBar.hidden = !isSource;
+  if (state !== 'running' && state !== 'ready') setTapMode(false);
+  if (isSource) revealStage();
+}
+
+// 결과를 보느라 아래로 내려가 있어도 새 세션이 시작되면 촬영 화면이 보이게
+function revealStage() {
+  const rect = els.stage.getBoundingClientRect();
+  if (rect.top >= 0 && rect.top < window.innerHeight * 0.5) return;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  els.stage.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+}
+
+// ===== 캔버스 색(영상 위에 그리므로 밝은 선 + 브랜드 빨강) =====
+function readColors() {
+  const css = getComputedStyle(document.documentElement);
+  const pick = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
+  const red = pick('--red', '#EE3F45');
+  app.colors = {
+    body: 'rgba(255, 255, 255, 0.85)',
+    leg: red,
+    ball: '#FFFFFF',
+    ballGlow: red,
+    ground: 'rgba(255, 255, 255, 0.35)',
+    burst: red,
+    spark: '#FFFFFF',
+    trail: 'rgba(255, 255, 255, 0.55)',
+  };
+}
+readColors();
+
+const FLASH_MS = 480;
+const RING_CIRCUMFERENCE = 2 * Math.PI * 29;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+// ===== 화면 크기 맞추기 =====
+function layoutStage() {
+  const containerW = els.stage.clientWidth;
+  if (!containerW) return;
+  const maxH = Math.max(240, Math.round(window.innerHeight * 0.68));
+  const aspect = app.videoW && app.videoH ? app.videoW / app.videoH : 16 / 9;
+  let w = containerW;
+  let h = w / aspect;
+  if (h > maxH) { h = maxH; w = h * aspect; }
+  els.stageMedia.style.aspectRatio = 'auto';
+  els.stageMedia.style.width = `${Math.round(w)}px`;
+  els.stageMedia.style.height = `${Math.round(h)}px`;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cw = Math.max(1, Math.round(w * dpr)), ch = Math.max(1, Math.round(h * dpr));
+  if (els.overlay.width !== cw || els.overlay.height !== ch) { els.overlay.width = cw; els.overlay.height = ch; }
+  app.dpr = dpr;
+  if (!app.running) render(app.lastPose, app.lastBall);
+}
+const stageObserver = new ResizeObserver(() => {
+  const w = els.stage.clientWidth;
+  if (w !== app.lastContainerW) { app.lastContainerW = w; layoutStage(); }
+});
+stageObserver.observe(els.stage);
+window.addEventListener('resize', layoutStage);
+
+// 분석 좌표(축소 해상도) ↔ 캔버스 좌표 변환
+function contentTransform() {
+  const cw = els.overlay.width, ch = els.overlay.height;
+  const vw = app.analysisW || 16, vh = app.analysisH || 9;
+  const scale = Math.min(cw / vw, ch / vh);
+  const drawW = vw * scale, drawH = vh * scale;
+  return { offX: (cw - drawW) / 2, offY: (ch - drawH) / 2, k: scale, drawW, drawH };
+}
+
+function configureSource(width, height) {
+  app.videoW = width;
+  app.videoH = height;
+  const scale = CONFIG.analysisLongSide / Math.max(width, height);
+  app.analysisW = Math.max(16, Math.round(width * scale));
+  app.analysisH = Math.max(16, Math.round(height * scale));
+  app.analysisCanvas.width = app.analysisW;
+  app.analysisCanvas.height = app.analysisH;
+  app.analyzer.setFrameSize(app.analysisW, app.analysisH);
+  els.stageMedia.classList.toggle('mirrored', app.mirrored);
+  els.video.hidden = app.mode === 'demo';
+  layoutStage();
+}
+
+// ===== MediaPipe 불러오기 =====
+async function importTasksVision() {
+  // CDN이 모듈을 내주는 방식이 버전마다 달라서 여러 경로를 차례로 시도
+  const candidates = [TASKS_BASE, `${TASKS_BASE}/+esm`, `${TASKS_BASE}/vision_bundle.mjs`];
+  let lastError = null;
+  for (const url of candidates) {
+    try {
+      const mod = await import(url);
+      const api = mod.PoseLandmarker ? mod : mod.default;
+      if (api && api.PoseLandmarker && api.FilesetResolver) return api;
+    } catch (err) { lastError = err; }
+  }
+  throw lastError || new Error('tasks-vision 모듈 없음');
+}
+
+async function createPoseLandmarker(api, fileset, delegate) {
+  let lastError = null;
+  for (const modelAssetPath of MODEL_URLS) {
+    try {
+      return await api.PoseLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath, delegate },
+        runningMode: 'VIDEO',
+        numPoses: 1,
+        minPoseDetectionConfidence: 0.5,
+        minPosePresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+        outputSegmentationMasks: false,
+      });
+    } catch (err) { lastError = err; }
+  }
+  throw lastError;
+}
+
+async function loadPoseModel() {
+  if (app.pose) return app.pose;
+  if (!app.poseLoading) {
+    app.poseLoading = (async () => {
+      const api = await importTasksVision();
+      const fileset = await api.FilesetResolver.forVisionTasks(`${TASKS_BASE}/wasm`);
+      app.visionApi = api;
+      app.fileset = fileset;
+      try {
+        const landmarker = await createPoseLandmarker(api, fileset, 'GPU');
+        app.poseDelegate = 'GPU';
+        return landmarker;
+      } catch (gpuError) {
+        console.warn('GPU 초기화 실패, CPU로 다시 시도', gpuError);
+        const landmarker = await createPoseLandmarker(api, fileset, 'CPU');
+        app.poseDelegate = 'CPU';
+        return landmarker;
+      }
+    })();
+  }
+  try {
+    app.pose = await app.poseLoading;
+    return app.pose;
+  } catch (err) {
+    app.poseLoading = null;
+    console.error(err);
+    throw new UserFacingError(POSE_FALLBACK_MESSAGE);
+  }
+}
+
+const POSE_FALLBACK_MESSAGE = 'AI 자세 모델을 불러오지 못해서 지금은 공 터치만 세요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
+
+// 모델이 없어도 공 카운트는 되도록: 실패하면 알림만 띄우고 세션은 계속
+function warnPoseUnavailable() {
+  showAlert(POSE_FALLBACK_MESSAGE, { label: '다시 시도', run: retryPoseModel });
+}
+
+async function retryPoseModel() {
+  setLoading('AI 모델 불러오는 중…');
+  try {
+    await loadPoseModel();
+    hideAlert();
+  } catch {
+    warnPoseUnavailable();
+  } finally {
+    setLoading(null);
+  }
+}
+
+// GPU에서 오류가 반복되면 CPU로 갈아타기(일부 기기 대응)
+async function switchToCpu() {
+  if (!app.visionApi || !app.fileset || app.poseDelegate === 'CPU') return;
+  const old = app.pose;
+  app.pose = null;
+  try { old?.close?.(); } catch { /* 이미 닫힘 */ }
+  try {
+    app.pose = await createPoseLandmarker(app.visionApi, app.fileset, 'CPU');
+    app.poseDelegate = 'CPU';
+    app.consecutiveErrors = 0;
+  } catch (err) {
+    console.error(err);
+    showAlert('AI 자세 분석을 켜지 못했어요. 공 카운트만 동작해요.');
+  }
+}
+
+function detectPose(source, t) {
+  if (!app.pose) return null;
+  // detectForVideo는 타임스탬프가 엄격히 증가해야 함
+  const ts = Math.max(app.lastDetectTs + 1, Math.floor(performance.now()));
+  app.lastDetectTs = ts;
+  const result = app.pose.detectForVideo(source, ts);
+  try {
+    const landmarks = result?.landmarks?.[0];
+    if (!landmarks) return null;
+    return buildPoseFrame(t, landmarks, result.worldLandmarks?.[0], app.analysisW, app.analysisH);
+  } finally {
+    result?.close?.();
+  }
+}
+
+// ===== 카메라 =====
+function describeCameraError(err) {
+  switch (err?.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return '카메라 권한이 막혀 있어요. 주소창 옆 사이트 설정에서 카메라를 허용한 뒤 다시 눌러 주세요.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return '쓸 수 있는 카메라를 찾지 못했어요.';
+    case 'NotReadableError':
+    case 'AbortError':
+      return '다른 앱이 카메라를 쓰고 있어요. 그 앱을 닫고 다시 시도해 주세요.';
+    default:
+      return `카메라를 켜지 못했어요. (${err?.message || '알 수 없는 오류'})`;
+  }
+}
+
+function waitForVideoSize(video, timeoutMs = 4000) {
+  return new Promise((resolve, reject) => {
+    const started = performance.now();
+    const check = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) resolve();
+      else if (performance.now() - started > timeoutMs) reject(new UserFacingError('영상 크기를 읽지 못했어요. 다시 시도해 주세요.'));
+      else requestAnimationFrame(check);
+    };
+    check();
+  });
+}
+
+async function openCamera() {
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: app.facing }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 60 } },
+    });
+  } catch (err) {
+    throw new UserFacingError(describeCameraError(err));
+  }
+  app.stream = stream;
+  const v = els.video;
+  v.srcObject = stream;
+  v.muted = true;
+  v.playsInline = true;
+  await v.play();
+  await waitForVideoSize(v);
+  app.mirrored = app.facing === 'user';   // 셀카 화면만 거울처럼(분석은 원본 기준)
+  configureSource(v.videoWidth, v.videoHeight);
+}
+
+function stopStream() {
+  if (app.stream) {
+    for (const track of app.stream.getTracks()) track.stop();
+    app.stream = null;
+  }
+  els.video.srcObject = null;
+}
+
+// 카메라·영상 정리: 리소스(카메라, object URL, 루프, 화면 꺼짐 방지) 누수 방지
+function stopSource() {
+  app.running = false;
+  cancelLoop();
+  stopStream();
+  els.video.pause();
+  if (app.fileUrl) {
+    els.video.removeAttribute('src');
+    els.video.load();
+    URL.revokeObjectURL(app.fileUrl);
+    app.fileUrl = null;
+  }
+  releaseWakeLock();
+}
+
+async function startCameraSession() {
+  hideAlert();
+  ensureAudio();
+  if (!window.isSecureContext) {
+    showAlert('카메라는 https 주소나 내 컴퓨터(localhost)에서만 켜져요. 배포한 https 주소로 열어 주세요.');
+    return;
+  }
+  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+    showAlert('이 브라우저는 카메라를 지원하지 않아요. 최신 크롬이나 사파리로 열어 주세요.');
+    return;
+  }
+  setLoading('카메라 켜는 중…');
+  try {
+    stopSource();
+    app.mode = 'camera';
+    const modelPromise = loadPoseModel().then(() => true, () => false);   // 카메라와 모델을 동시에 준비
+    await openCamera();
+    setLoading('AI 모델 불러오는 중…');
+    const modelReady = await modelPromise;
+    resetSession();
+    restoreBallColor();
+    setLoading(null);
+    setUiState('running');
+    if (!modelReady) warnPoseUnavailable();
+    requestWakeLock();
+    startLoop();
+  } catch (err) {
+    setLoading(null);
+    stopSource();
+    app.mode = 'idle';
+    setUiState('idle');
+    showAlert(err instanceof UserFacingError ? err.message : describeCameraError(err), { label: '다시 시도', run: startCameraSession });
+  }
+}
+
+async function flipCamera() {
+  if (app.mode !== 'camera') return;
+  app.facing = app.facing === 'user' ? 'environment' : 'user';
+  app.running = false;
+  cancelLoop();
+  handleAnalyzerEvents(app.analyzer.finish(nowSec()));
+  try {
+    stopStream();
+    await openCamera();
+    app.tracker.reset();
+    restoreBallColor();
+    startLoop();
+  } catch (err) {
+    showAlert(err instanceof UserFacingError ? err.message : '카메라를 바꾸지 못했어요.');
+    finishSession();
+  }
+}
+
+// ===== 영상 파일 =====
+function waitForEvent(target, eventName, timeoutMs, failMessage) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timer);
+      target.removeEventListener(eventName, onOk);
+      target.removeEventListener('error', onError);
+    };
+    const onOk = () => { cleanup(); resolve(); };
+    const onError = () => { cleanup(); reject(new UserFacingError(failMessage)); };
+    const timer = setTimeout(() => { cleanup(); reject(new UserFacingError(failMessage)); }, timeoutMs);
+    target.addEventListener(eventName, onOk, { once: true });
+    target.addEventListener('error', onError, { once: true });
+  });
+}
+
+async function startFileSession(file) {
+  hideAlert();
+  ensureAudio();
+  const looksLikeVideo = (file.type && file.type.startsWith('video/')) || /\.(mp4|mov|m4v|webm)$/i.test(file.name || '');
+  if (!looksLikeVideo) { showAlert('영상 파일만 올릴 수 있어요.'); return; }
+  setLoading('영상 여는 중…');
+  try {
+    stopSource();
+    app.mode = 'file';
+    const modelPromise = loadPoseModel().then(() => true, () => false);
+    app.fileUrl = URL.createObjectURL(file);
+    const v = els.video;
+    v.srcObject = null;
+    v.muted = true;
+    v.playsInline = true;
+    v.loop = false;
+    v.src = app.fileUrl;
+    await waitForEvent(v, 'loadedmetadata', 15000,
+      '영상을 열지 못했어요. 이 브라우저에서 재생되지 않는 형식일 수 있어요. 아이폰이면 설정 > 카메라 > 포맷에서 "높은 호환성"으로 찍어 주세요.');
+    app.mirrored = false;
+    configureSource(v.videoWidth, v.videoHeight);
+    // 첫 화면을 확실히 띄우기(공을 탭해야 하므로)
+    try { v.currentTime = 0.05; await waitForEvent(v, 'seeked', 3000, ''); } catch { /* 일부 브라우저는 seek 이벤트가 늦음: 무시 */ }
+    setLoading('AI 모델 불러오는 중…');
+    const modelReady = await modelPromise;
+    resetSession();
+    const restored = restoreBallColor();
+    setLoading(null);
+    setUiState('ready');
+    if (!modelReady) warnPoseUnavailable();
+    if (!restored) setTapMode(true);
+  } catch (err) {
+    setLoading(null);
+    stopSource();
+    app.mode = 'idle';
+    setUiState('idle');
+    showAlert(err instanceof UserFacingError ? err.message : `영상을 열지 못했어요. (${err?.message || '알 수 없는 오류'})`);
+  }
+}
+
+async function playFile() {
+  if (app.mode !== 'file') return;
+  if (app.tracker.status === 'idle') {
+    setTapMode(true);
+    showAlert('먼저 화면에서 공을 탭해 주세요.');
+    return;
+  }
+  hideAlert();
+  ensureAudio();
+  try {
+    els.video.playbackRate = 0.5;   // 느리게 재생해서 프레임을 더 많이 분석
+    await els.video.play();
+  } catch {
+    showAlert('영상을 재생하지 못했어요. 다시 눌러 주세요.');
+    return;
+  }
+  setUiState('running');
+  startLoop();
+}
+
+els.video.addEventListener('ended', () => { if (app.mode === 'file' && app.running) finishSession(); });
+
+// ===== 데모(카메라 없이 화면 흐름 보기) =====
+function startDemoSession() {
+  hideAlert();
+  ensureAudio();
+  stopSource();
+  app.mode = 'demo';
+  app.mirrored = false;
+  app.demo = createJuggleSimulation({ width: 320, height: 180, seed: (Date.now() % 9973) + 1 });
+  configureSource(320, 180);
+  if (!app.demoCanvas) {
+    app.demoCanvas = document.createElement('canvas');
+    app.demoCtx = app.demoCanvas.getContext('2d');
+  }
+  app.demoCanvas.width = 320;
+  app.demoCanvas.height = 180;
+  app.demoImage = new ImageData(320, 180);
+  resetSession();
+  app.demo.paint(app.demoImage);
+  const ball = app.demo.ballPx();
+  app.tracker.initFromTap(app.demoImage, ball.x, ball.y);   // 데모는 공 위치를 알고 있으니 자동 지정
+  app.demoT = 0;
+  app.demoAccum = 0;
+  setUiState('running');
+  startLoop();
+}
+
+function demoTick(now) {
+  app.loopHandle = null;
+  if (!app.running || app.mode !== 'demo') return;
+  const elapsed = Math.min(0.1, (now - app.demoLastNow) / 1000);
+  app.demoLastNow = now;
+  app.demoAccum += elapsed;
+  try {
+    // 30fps 고정 간격으로 진행(기기 속도와 무관하게 같은 결과)
+    while (app.demoAccum >= DEMO_STEP) {
+      app.demoAccum -= DEMO_STEP;
+      app.demoT += DEMO_STEP;
+      app.demo.step(DEMO_STEP);
+      app.demo.paint(app.demoImage);
+      const lm = app.demo.landmarks();
+      analyzeFrame(app.demoT, buildPoseFrame(app.demoT, lm.image, lm.world, 320, 180), app.demoImage);
+    }
+  } catch (err) {
+    handleFrameError(err);
+  }
+  if (app.demoT >= DEMO_DURATION_SEC) { finishSession(); return; }
+  if (app.running) app.loopHandle = requestAnimationFrame(demoTick);
+}
+
+// ===== 프레임 루프 =====
+function nowSec() {
+  if (app.mode === 'file') return els.video.currentTime;
+  if (app.mode === 'demo') return app.demoT;
+  return performance.now() / 1000;
+}
+
+function startLoop() {
+  cancelLoop();
+  app.running = true;
+  app.fps = { frames: 0, since: performance.now(), value: 0, startedAt: performance.now(), warned: app.fps.warned };
+  app.lastPoseSeenAt = performance.now();
+  if (app.mode === 'demo') {
+    app.demoLastNow = performance.now();
+    app.loopKind = 'raf';
+    app.loopHandle = requestAnimationFrame(demoTick);
+    return;
+  }
+  scheduleVideoFrame();
+}
+
+function scheduleVideoFrame() {
+  if (!app.running) return;
+  const v = els.video;
+  // 새 프레임이 나올 때만 처리(처리 중 밀린 프레임은 건너뜀 → 지연이 쌓이지 않음)
+  if (typeof v.requestVideoFrameCallback === 'function') {
+    app.loopKind = 'rvfc';
+    app.loopHandle = v.requestVideoFrameCallback(onVideoFrame);
+  } else {
+    app.loopKind = 'raf';
+    app.loopHandle = requestAnimationFrame((now) => onVideoFrame(now, null));
+  }
+}
+
+function cancelLoop() {
+  if (app.loopHandle === null) return;
+  if (app.loopKind === 'rvfc' && typeof els.video.cancelVideoFrameCallback === 'function') els.video.cancelVideoFrameCallback(app.loopHandle);
+  else cancelAnimationFrame(app.loopHandle);
+  app.loopHandle = null;
+}
+
+function onVideoFrame(now, meta) {
+  app.loopHandle = null;
+  if (!app.running) return;
+  try {
+    processVideoFrame(now, meta);
+    app.consecutiveErrors = 0;
+  } catch (err) {
+    handleFrameError(err);
+  }
+  scheduleVideoFrame();
+}
+
+function processVideoFrame(now, meta) {
+  const v = els.video;
+  if (v.readyState < 2 || !app.analysisW) return;
+  const mediaTime = meta && typeof meta.mediaTime === 'number' ? meta.mediaTime : v.currentTime;
+  if (app.mode === 'file') {
+    if (mediaTime === app.lastMediaTime) return;
+    app.lastMediaTime = mediaTime;
+  }
+  // 영상 파일은 영상 속 시간 기준(재생 속도와 무관하게 물리량이 맞게)
+  const t = app.mode === 'file' ? mediaTime : now / 1000;
+  const pose = detectPose(v, t);
+  app.analysisCtx.drawImage(v, 0, 0, app.analysisW, app.analysisH);
+  const img = app.analysisCtx.getImageData(0, 0, app.analysisW, app.analysisH);
+  analyzeFrame(t, pose, img);
+}
+
+function handleFrameError(err) {
+  app.consecutiveErrors++;
+  console.error(err);
+  if (app.consecutiveErrors === 5 && app.poseDelegate === 'GPU') { switchToCpu(); return; }
+  if (app.consecutiveErrors >= 20) {
+    showAlert('분석 중 오류가 계속 나서 멈췄어요. 페이지를 새로고침해 주세요.');
+    finishSession();
+  }
+}
+
+// 카메라·영상·데모가 공유하는 한 프레임 분석
+function analyzeFrame(t, pose, img) {
+  app.latestImage = img;
+  const tracker = app.tracker, analyzer = app.analyzer;
+  const bodyH = analyzer.bodyHeightPx;
+  const ball = tracker.update(img, t, {
+    gravityPx: bodyH ? (9.81 * bodyH) / CONFIG.assumedBodyHeightM : 0,
+    exclusions: pose ? legExclusions(pose, tracker.radius) : [],
+    expectedRadius: bodyH ? bodyH * CONFIG.ballRadiusToBody : null,
+  });
+  const events = analyzer.update(t, pose, ball);
+  app.lastPose = pose;
+  app.lastBall = ball;
+  if (pose) app.lastPoseSeenAt = performance.now();
+  if (ball.measured) app.trail.push({ x: ball.zx, y: ball.zy, t });
+  while (app.trail.length && (t - app.trail[0].t > 0.6 || app.trail[0].t > t)) app.trail.shift();
+  handleAnalyzerEvents(events);
+  render(pose, ball);
+  updateChips(pose, ball);
+  updateHud();
+  updateTip(false);
+  countFps();
+}
+
+// ===== 이벤트 → 소리·음성·기록 =====
+function handleAnalyzerEvents(events) {
+  for (const ev of events) {
+    if (ev.type === 'touch') {
+      playTone(ev.streak % 10 === 0 ? 'milestone' : 'touch');
+      if (!reduceMotion.matches) {
+        app.flashes.push({
+          x: ev.record.x, y: ev.record.contactY, r: app.tracker.radius, at: performance.now(),
+          big: ev.streak % 10 === 0, seed: Math.random() * Math.PI,
+        });
+      }
+      bumpCounter();
+      updateTip(true);
+    } else if (ev.type === 'setEnd') {
+      playTone('drop');
+      if (ev.set.count > app.bestEver) {
+        app.bestEver = ev.set.count;
+        storage.write(STORAGE_KEYS.bestEver, app.bestEver);
+      }
+      const tip = ev.set.topIssue ? ` ${ISSUES[ev.set.topIssue].tip}` : '';
+      if (ev.set.reason !== 'stopped') speak(`${ev.set.count}개.${tip}`);
+      renderSets();
+      updateTip(true);
+    }
+  }
+}
+
+// ===== 소리 =====
+function ensureAudio() {
+  // 브라우저는 사용자가 누른 뒤에만 소리를 허용하므로 버튼 클릭 때 준비
+  try {
+    if (!app.audio) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) app.audio = new Ctx();
+    }
+    if (app.audio && app.audio.state === 'suspended') app.audio.resume().catch(() => {});
+  } catch { app.audio = null; }
+}
+
+const TONES = {
+  touch: { freq: 880, dur: 0.06, gain: 0.12, type: 'sine' },
+  milestone: { freq: 1320, dur: 0.14, gain: 0.16, type: 'sine' },
+  drop: { freq: 220, dur: 0.28, gain: 0.14, type: 'triangle' },
+};
+function playTone(kind) {
+  if (!els.optSound.checked || !app.audio) return;
+  const spec = TONES[kind];
+  const ctx = app.audio;
+  const t0 = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = spec.type;
+  osc.frequency.value = spec.freq;
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(spec.gain, t0 + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + spec.dur);
+  osc.connect(gain).connect(ctx.destination);
+  osc.onended = () => { osc.disconnect(); gain.disconnect(); };   // 노드 누수 방지
+  osc.start(t0);
+  osc.stop(t0 + spec.dur + 0.02);
+}
+
+function speak(text) {
+  if (!els.optVoice.checked || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ko-KR';
+    utterance.rate = 1.05;
+    window.speechSynthesis.speak(utterance);
+  } catch { /* 음성 미지원 기기 */ }
+}
+
+// ===== 화면 꺼짐 방지 =====
+async function requestWakeLock() {
+  try { app.wakeLock = await navigator.wakeLock?.request('screen'); } catch { app.wakeLock = null; }
+}
+function releaseWakeLock() {
+  try { app.wakeLock?.release(); } catch { /* 이미 해제 */ }
+  app.wakeLock = null;
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && app.running && app.mode === 'camera') requestWakeLock();
+});
+window.addEventListener('pagehide', () => stopSource());
+
+// ===== 공 지정(탭) =====
+function setTapMode(on) {
+  app.tapMode = on;
+  els.stage.dataset.tap = on ? 'on' : 'off';
+  els.tapHint.hidden = !on;
+  els.btnPickBall.setAttribute('aria-pressed', on ? 'true' : 'false');
+  els.btnPickBall.textContent = on ? '공 지정 취소' : '공 지정';
+  updateTip(true);
+}
+
+function clientToAnalysis(clientX, clientY) {
+  const rect = els.overlay.getBoundingClientRect();
+  if (!rect.width || !rect.height) return null;
+  let x = (clientX - rect.left) * (els.overlay.width / rect.width);
+  const y = (clientY - rect.top) * (els.overlay.height / rect.height);
+  if (app.mirrored) x = els.overlay.width - x;   // 거울 화면 → 원본 좌표
+  const T = contentTransform();
+  const ax = (x - T.offX) / T.k, ay = (y - T.offY) / T.k;
+  if (ax < 0 || ay < 0 || ax >= app.analysisW || ay >= app.analysisH) return null;
+  return { x: ax, y: ay };
+}
+
+function captureCurrentFrame() {
+  if (app.mode === 'demo') return app.demoImage;
+  const v = els.video;
+  if (v.readyState < 2 || !app.analysisW) return app.latestImage;
+  app.analysisCtx.drawImage(v, 0, 0, app.analysisW, app.analysisH);
+  return app.analysisCtx.getImageData(0, 0, app.analysisW, app.analysisH);
+}
+
+els.overlay.addEventListener('pointerdown', (event) => {
+  if (!app.tapMode) return;
+  event.preventDefault();
+  const point = clientToAnalysis(event.clientX, event.clientY);
+  if (!point) return;
+  const frame = app.mode === 'camera' ? (app.latestImage || captureCurrentFrame()) : captureCurrentFrame();
+  const result = app.tracker.initFromTap(frame, point.x, point.y);
+  if (!result.ok) {
+    showAlert('공을 찾지 못했어요. 공 한가운데를 탭하거나, 배경과 색이 다른 곳에서 다시 해 보세요.');
+    return;
+  }
+  hideAlert();
+  storage.write(STORAGE_KEYS.ballColor, app.tracker.color);
+  app.trail = [];
+  setTapMode(false);
+  setChip(els.chipBall, 'good', '공 지정됨');
+  app.lastBall = app.tracker.observation(nowSec(), false);
+  render(app.lastPose, app.lastBall);
+  if (app.resumeAfterTap) {
+    app.resumeAfterTap = false;
+    els.video.play().catch(() => showAlert('영상을 다시 재생하지 못했어요. "분석 시작"을 눌러 주세요.'));
+  }
+});
+
+function restoreBallColor() {
+  const color = storage.read(STORAGE_KEYS.ballColor);
+  if (!color) return false;
+  const guess = Math.max(3, (app.analysisH || 180) * 0.04);
+  return app.tracker.initFromColor(color, guess);
+}
+
+// ===== 세션 =====
+function resetSession() {
+  app.analyzer.reset();
+  app.analyzer.setFrameSize(app.analysisW, app.analysisH);
+  app.tracker.reset();
+  app.trail = [];
+  app.flashes = [];
+  app.lastPose = null;
+  app.lastBall = null;
+  app.lastMediaTime = -1;
+  app.consecutiveErrors = 0;
+  app.shown = { streak: -1, best: -1, total: -1, bestEver: -1 };
+  els.summaryCard.hidden = true;
+  renderSets();
+  updateHud();
+}
+
+function finishSession() {
+  if (app.mode === 'idle') return;
+  handleAnalyzerEvents(app.analyzer.finish(nowSec()));
+  stopSource();
+  setUiState('finished');
+  renderSets();
+  renderSummary();
+  updateHud();
+  if (window.matchMedia('(max-width: 919px)').matches) els.summaryCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function newSession() {
+  stopSource();
+  app.mode = 'idle';
+  resetSession();
+  hideAlert();
+  setUiState('idle');
+  updateChips(null, null);
+  render(null, null);
+  window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}
+
+// ===== 그리기 =====
+function render(pose, ball) {
+  const ctx = app.overlayCtx;
+  const cv = els.overlay;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if (!app.analysisW) return;
+  const T = contentTransform();
+  const sx = (x) => T.offX + x * T.k;
+  const sy = (y) => T.offY + y * T.k;
+  const unit = app.dpr;
+
+  // 데모는 합성 장면을 배경으로
+  if (app.mode === 'demo' && app.demoImage) {
+    app.demoCtx.putImageData(app.demoImage, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(app.demoCanvas, T.offX, T.offY, T.drawW, T.drawH);
+  }
+
+  if (pose && app.analyzer.groundY !== null) {
+    ctx.save();
+    ctx.strokeStyle = app.colors.ground;
+    ctx.setLineDash([6 * unit, 6 * unit]);
+    ctx.lineWidth = 1.5 * unit;
+    ctx.beginPath();
+    ctx.moveTo(T.offX, sy(app.analyzer.groundY));
+    ctx.lineTo(T.offX + T.drawW, sy(app.analyzer.groundY));
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (pose) {
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 3 * unit;
+    for (const [a, b] of SKELETON) {
+      const A = pose.px[a], B = pose.px[b];
+      if (A.v < 0.4 || B.v < 0.4) continue;
+      ctx.strokeStyle = a >= 23 && b >= 23 ? app.colors.leg : app.colors.body;
+      ctx.beginPath();
+      ctx.moveTo(sx(A.x), sy(A.y));
+      ctx.lineTo(sx(B.x), sy(B.y));
+      ctx.stroke();
+    }
+  }
+
+  if (app.trail.length > 1) {
+    ctx.save();
+    ctx.strokeStyle = app.colors.trail;
+    ctx.lineWidth = 2 * unit;
+    ctx.setLineDash([2 * unit, 5 * unit]);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    app.trail.forEach((p, i) => (i ? ctx.lineTo(sx(p.x), sy(p.y)) : ctx.moveTo(sx(p.x), sy(p.y))));
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 공 표시: 흰 원 + 빨간 번짐(영상이 밝든 어둡든 보이게)
+  if (ball && (ball.status === 'tracking' || ball.status === 'coasting')) {
+    ctx.save();
+    ctx.strokeStyle = app.colors.ball;
+    ctx.shadowColor = app.colors.ballGlow;
+    ctx.shadowBlur = 10 * unit;
+    ctx.lineWidth = 3 * unit;
+    if (ball.status === 'coasting') ctx.setLineDash([4 * unit, 4 * unit]);
+    ctx.beginPath();
+    ctx.arc(sx(ball.x), sy(ball.y), Math.max(5 * unit, ball.r * T.k + 3 * unit), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 터치 임팩트: 번쩍이는 원 + 퍼지는 고리 + 튀는 불꽃(10개마다 더 크게)
+  const now = performance.now();
+  app.flashes = app.flashes.filter((f) => now - f.at < FLASH_MS);
+  for (const f of app.flashes) {
+    const k = (now - f.at) / FLASH_MS;
+    const ease = 1 - (1 - k) * (1 - k);
+    const base = Math.max(6 * unit, f.r * T.k);
+    const cx = sx(f.x), cy = sy(f.y);
+    const spread = f.big ? 2.6 : 1.8;
+    ctx.save();
+    ctx.globalAlpha = 0.38 * (1 - k);
+    ctx.fillStyle = app.colors.burst;
+    ctx.beginPath();
+    ctx.arc(cx, cy, base * (1 + ease * 0.8), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1 - k;
+    ctx.strokeStyle = app.colors.burst;
+    ctx.lineWidth = (f.big ? 5 : 4) * unit * (1 - k * 0.5);
+    ctx.beginPath();
+    ctx.arc(cx, cy, base * (1.2 + ease * spread), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = app.colors.spark;
+    ctx.lineWidth = 2.5 * unit;
+    ctx.lineCap = 'round';
+    const sparks = f.big ? 12 : 8;
+    for (let i = 0; i < sparks; i++) {
+      const angle = (i / sparks) * Math.PI * 2 + f.seed;
+      const r0 = base * (1.35 + ease * 1.1);
+      const r1 = base * (1.7 + ease * spread);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * r0, cy + Math.sin(angle) * r0);
+      ctx.lineTo(cx + Math.cos(angle) * r1, cy + Math.sin(angle) * r1);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+// ===== 상태 표시 =====
+function setChip(el, state, text) {
+  if (el.dataset.state !== state) el.dataset.state = state;
+  if (el.textContent !== text) el.textContent = text;
+}
+
+function updateChips(pose, ball) {
+  if (app.mode === 'idle') {
+    setChip(els.chipPose, '', '사람 –');
+    setChip(els.chipBall, '', '공 –');
+    setChip(els.chipView, '', '시점 –');
+    setChip(els.chipFps, '', '– fps');
+    return;
+  }
+  if (!app.pose && app.mode !== 'demo') setChip(els.chipPose, 'warn', '자세 분석 꺼짐');
+  else if (!pose) setChip(els.chipPose, 'bad', '사람 안 보임');
+  else if (pose.feetCut) setChip(els.chipPose, 'warn', '발이 잘림');
+  else setChip(els.chipPose, 'good', '사람 인식');
+  const status = ball ? ball.status : app.tracker.status;
+  const ballText = { idle: ['warn', '공 미지정'], tracking: ['good', '공 추적 중'], coasting: ['warn', '공 확인 중'], lost: ['bad', '공 찾는 중'] }[status] || ['', '공 –'];
+  setChip(els.chipBall, ballText[0], ballText[1]);
+  const viewText = { front: '정면', side: '측면', oblique: '비스듬', unknown: '–' }[app.analyzer.view];
+  setChip(els.chipView, app.analyzer.view === 'unknown' ? '' : 'good', `시점 ${viewText}`);
+}
+
+function countFps() {
+  const f = app.fps;
+  f.frames++;
+  const now = performance.now();
+  if (now - f.since < 1000) return;
+  f.value = (f.frames * 1000) / (now - f.since);
+  f.frames = 0;
+  f.since = now;
+  setChip(els.chipFps, f.value >= 20 ? 'good' : f.value >= 12 ? 'warn' : 'bad', `${Math.round(f.value)} fps`);
+  if (app.mode === 'camera' && !f.warned && now - f.startedAt > 4000 && f.value < 12) {
+    f.warned = true;
+    showAlert(`처리 속도가 낮아요(약 ${Math.round(f.value)}fps). 빠른 터치를 놓칠 수 있어요. 다른 앱을 닫거나 밝은 곳에서 해 보세요.`);
+  }
+}
+
+function bumpCounter() {
+  const el = els.streakNum;
+  el.classList.remove('bump');
+  void el.offsetWidth;   // 애니메이션 다시 시작
+  el.classList.add('bump');
+}
+
+function updateHud() {
+  const a = app.analyzer;
+  const values = { streak: a.currentStreak, best: a.bestStreak, total: a.touches.length, bestEver: app.bestEver };
+  if (values.streak !== app.shown.streak) {
+    els.streakNum.textContent = String(values.streak);
+    // 링: 내 기록(최소 10개)까지 얼마나 왔는지. 기록을 넘으면 꽉 참
+    const target = Math.max(10, values.bestEver);
+    const progress = Math.min(1, values.streak / target);
+    els.ringFill.style.strokeDashoffset = String(RING_CIRCUMFERENCE * (1 - progress));
+    els.hudBest.dataset.record = values.bestEver > 0 && values.streak > values.bestEver ? 'on' : 'off';
+  }
+  if (values.best !== app.shown.best) els.bestNum.textContent = String(values.best);
+  if (values.total !== app.shown.total) els.totalNum.textContent = String(values.total);
+  if (values.bestEver !== app.shown.bestEver) els.bestEverNum.textContent = String(values.bestEver);
+  app.shown = values;
+}
+
+function computeTip() {
+  const tracker = app.tracker, analyzer = app.analyzer;
+  if (app.tapMode) return { tone: 'info', text: '화면에서 공을 탭하세요. 공이 멈춰 있을 때 정확해요.' };
+  const poseAvailable = app.mode === 'demo' || Boolean(app.pose);
+  if (poseAvailable && app.mode !== 'demo' && app.running && performance.now() - app.lastPoseSeenAt > 1500) {
+    return { tone: 'warn', text: '사람이 안 보여요. 머리부터 발끝까지 나오게 뒤로 가 주세요.' };
+  }
+  if (app.lastPose && app.lastPose.feetCut) return { tone: 'warn', text: '발이 화면 밖으로 잘려요. 폰을 조금 더 멀리 두세요.' };
+  if (tracker.status === 'idle') return { tone: 'warn', text: '"공 지정"을 누르고 화면에서 공을 탭하세요.' };
+  if (tracker.status === 'lost') {
+    return { tone: 'warn', text: tracker.radiusUncertain ? '지난번 공 색으로 찾는 중이에요. 안 잡히면 "공 지정"을 눌러 주세요.' : '공을 놓쳤어요. 공이 화면에 보이면 다시 찾아요.' };
+  }
+  if (app.mode === 'file' && els.video.paused && !app.running) return { tone: 'info', text: '"분석 시작"을 누르면 0.5배속으로 분석해요.' };
+  const issue = analyzer.currentTip();
+  if (issue) return { tone: 'warn', text: ISSUES[issue].tip };
+  if (analyzer.currentStreak >= 3) return { tone: 'good', text: '좋아요. 지금 리듬 그대로' };
+  if (!poseAvailable) return { tone: 'info', text: '자세 분석 없이 공 터치만 세는 중이에요.' };
+  return { tone: 'info', text: '리프팅을 시작하세요. 터치할 때마다 소리가 나요.' };
+}
+
+// 깜빡임을 막으려고 0.4초에 한 번만 갱신(터치·세트 종료 때는 즉시)
+function updateTip(force) {
+  const now = performance.now();
+  if (!force && now - app.lastTipAt < 400) return;
+  app.lastTipAt = now;
+  const tip = computeTip();
+  if (els.tipBar.dataset.tone !== tip.tone) els.tipBar.dataset.tone = tip.tone;
+  if (els.tipText.textContent !== tip.text) els.tipText.textContent = tip.text;
+}
+
+function renderSets() {
+  const sets = app.analyzer.sets;
+  els.setsList.replaceChildren();
+  if (!sets.length) {
+    const empty = document.createElement('span');
+    empty.className = 'muted small-text';
+    empty.textContent = '공을 떨어뜨릴 때마다 세트 기록이 여기 쌓여요.';
+    els.setsList.append(empty);
+    els.setsMeta.hidden = true;
+    els.setsBadge.hidden = true;
+    return;
+  }
+  els.setsBadge.hidden = false;
+  els.setsBadge.textContent = `${sets.length}세트`;
+  const best = Math.max(...sets.map((s) => s.count));
+  for (const set of sets.slice().reverse()) {
+    const pill = document.createElement('span');
+    pill.className = set.count === best ? 'set-pill best' : 'set-pill';
+    pill.textContent = String(set.count);
+    pill.title = set.topIssue ? ISSUES[set.topIssue].label : '';
+    els.setsList.append(pill);
+  }
+  const avg = sets.reduce((s, x) => s + x.count, 0) / sets.length;
+  els.setsMeta.hidden = false;
+  els.setsMeta.textContent = `평균 ${avg.toFixed(1)}개 · 최근 세트가 왼쪽`;
+}
+
+function appendEl(parent, tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text !== undefined) el.textContent = text;
+  parent.append(el);
+  return el;
+}
+
+// 키 170cm 기준으로 환산한 '터치 지점에서 공이 올라간 높이'
+function describeRise(rise) {
+  const cm = Math.round(rise * CONFIG.assumedBodyHeightM * 100);
+  return `약 ${cm}cm`;
+}
+
+function renderSummary() {
+  const s = app.analyzer.summary();
+  const body = els.summaryBody;
+  body.replaceChildren();
+  els.summaryCard.hidden = false;
+  if (!s.totalTouches) {
+    appendEl(body, 'p', 'muted', '터치가 감지되지 않았어요. 전신과 공이 다 보이는지, 공 지정이 됐는지 확인하고 다시 해 보세요.');
+    return;
+  }
+
+  const grid = appendEl(body, 'div', 'stat-grid');
+  const stat = (label, value, hero = false) => {
+    const box = appendEl(grid, 'div', hero ? 'stat hero' : 'stat');
+    appendEl(box, 'span', '', label);
+    appendEl(box, 'b', '', value);
+  };
+  stat('최고 연속', String(s.bestStreak), true);
+  stat('총 터치', String(s.totalTouches));
+  stat('세트', String(s.setCount));
+  stat('세트 평균', s.setCount ? s.averageSet.toFixed(1) : '–');
+
+  const parts = appendEl(body, 'div', 'summary-section');
+  appendEl(parts, 'h3', '', '터치 부위');
+  const order = ['footR', 'footL', 'thighR', 'thighL', 'head', 'unknown'];
+  for (const key of order) {
+    const count = s.partCounts[key];
+    if (!count) continue;
+    const row = appendEl(parts, 'div', 'part-row');
+    appendEl(row, 'span', '', PART_LABELS[key]);
+    const bar = appendEl(row, 'div', 'part-bar');
+    const fill = appendEl(bar, 'i');
+    fill.style.width = `${Math.round((count / s.totalTouches) * 100)}%`;
+    appendEl(row, 'output', '', String(count));
+  }
+
+  const facts = appendEl(body, 'div', 'summary-section');
+  appendEl(facts, 'h3', '', '리듬과 높이');
+  const list = appendEl(facts, 'ul', 'fact-list');
+  const fact = (label, value) => {
+    const li = appendEl(list, 'li');
+    appendEl(li, 'span', 'fact-label', label);
+    appendEl(li, 'span', 'fact-value', value);
+  };
+  if (s.weakFootShare !== null) fact('약발 비율', `${s.weakFootSide === 'L' ? '왼발' : '오른발'} ${Math.round(s.weakFootShare * 100)}%`);
+  if (s.avgRise !== null) fact('공 높이(평균)', describeRise(s.avgRise));
+  if (Number.isFinite(s.riseCv)) fact('높이 일정함', s.riseCv < 0.25 ? '일정한 편' : s.riseCv < 0.4 ? '보통' : '들쭉날쭉');
+  if (s.avgInterval !== null) fact('터치 간격', `평균 ${s.avgInterval.toFixed(2)}초${Number.isFinite(s.rhythmCv) ? (s.rhythmCv < 0.2 ? ' · 리듬 일정' : ' · 리듬 불규칙') : ''}`);
+
+  const issues = appendEl(body, 'div', 'summary-section');
+  appendEl(issues, 'h3', '', '고칠 점');
+  const top = s.issues.filter((i) => i.rate >= 0.2).slice(0, 3);
+  if (!top.length) {
+    appendEl(issues, 'p', 'muted', '반복해서 나온 자세 문제는 없었어요.');
+  } else {
+    // 자주 나온 순서대로 번호를 붙임(1이 가장 먼저 고칠 것)
+    top.forEach((item, rank) => {
+      const box = appendEl(issues, 'div', 'issue');
+      appendEl(box, 'span', 'issue-rank', String(rank + 1));
+      const content = appendEl(box, 'div');
+      const head = appendEl(content, 'div', 'issue-head');
+      appendEl(head, 'strong', '', ISSUES[item.key].label);
+      appendEl(head, 'span', 'issue-rate', `${Math.round(item.rate * 100)}%`);
+      appendEl(content, 'p', '', `${ISSUES[item.key].detail} (${item.base}번 중 ${item.count}번)`);
+    });
+  }
+  const viewNote = s.view === 'side' ? '측면 촬영이라 좌우 흐름은 따로 보지 않았어요.'
+    : s.view === 'front' ? '정면 촬영이라 발등 각도와 앞뒤 흐름은 따로 보지 않았어요.'
+    : '정면이나 측면에서 찍으면 더 많은 항목을 볼 수 있어요.';
+  appendEl(body, 'p', 'muted small-text', viewNote);
+}
+
+// ===== 버튼 터치 임팩트: 누른 자리에서 물결 + 짧은 진동(지원 기기만) =====
+function addPressFeedback(button) {
+  button.addEventListener('pointerdown', (event) => {
+    if (button.disabled || event.button > 0) return;
+    if (typeof navigator.vibrate === 'function') {
+      try { navigator.vibrate(8); } catch { /* 진동 미지원 */ }
+    }
+    if (reduceMotion.matches) return;
+    const rect = button.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 2.2;
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    ripple.style.width = `${size}px`;
+    ripple.style.height = `${size}px`;
+    ripple.style.left = `${event.clientX - rect.left - size / 2}px`;
+    ripple.style.top = `${event.clientY - rect.top - size / 2}px`;
+    button.append(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+  });
+}
+document.querySelectorAll('.btn').forEach(addPressFeedback);
+
+// ===== 버튼 연결 =====
+els.btnCamera.addEventListener('click', startCameraSession);
+els.btnUpload.addEventListener('click', () => els.fileInput.click());
+els.fileInput.addEventListener('change', () => {
+  const file = els.fileInput.files && els.fileInput.files[0];
+  els.fileInput.value = '';   // 같은 파일을 다시 골라도 change가 나도록
+  if (file) startFileSession(file);
+});
+els.btnDemo.addEventListener('click', startDemoSession);
+els.btnPlay.addEventListener('click', playFile);
+els.btnFlip.addEventListener('click', flipCamera);
+els.btnStop.addEventListener('click', finishSession);
+els.btnNewSession.addEventListener('click', newSession);
+els.btnPickBall.addEventListener('click', () => {
+  if (app.tapMode) {
+    setTapMode(false);
+    if (app.resumeAfterTap) {
+      app.resumeAfterTap = false;
+      els.video.play().catch(() => {});
+    }
+    return;
+  }
+  if (app.mode === 'file' && app.running && !els.video.paused) {
+    els.video.pause();   // 움직이는 공은 탭하기 어려우니 잠깐 멈춤
+    app.resumeAfterTap = true;
+  }
+  setTapMode(true);
+});
+
+setUiState('idle');
+updateHud();
+layoutStage();
+</script>
+</body>
+</html>
